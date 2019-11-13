@@ -1,1 +1,3 @@
-"CAP(https://github.com/dotnetcore/CAP) µÄ SQLiteÊµÏÖ" 
+https://github.com/dotnetcore/CAP
+
+CAPçš„SQLiteå®ç°
