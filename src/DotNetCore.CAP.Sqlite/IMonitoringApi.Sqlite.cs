@@ -87,7 +87,7 @@ select count(`Id`) from `{0}.received` where `StatusName` = 'Failed';", _prefix)
 
             if (!string.IsNullOrEmpty(queryDto.Content))
             {
-                where += " and `Content` like '%@Content%'";
+                where += " and `Content` like @Content";
             }
 
             var sqlQuery =
@@ -98,7 +98,7 @@ select count(`Id`) from `{0}.received` where `StatusName` = 'Failed';", _prefix)
                 queryDto.StatusName,
                 queryDto.Group,
                 queryDto.Name,
-                queryDto.Content,
+                Content = $"%{queryDto.Content}%",//参数化Like查询的一个错误
                 Offset = queryDto.CurrentPage * queryDto.PageSize,
                 Limit = queryDto.PageSize
             }).ToList());

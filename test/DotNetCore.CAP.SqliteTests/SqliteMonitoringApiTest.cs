@@ -37,7 +37,7 @@ namespace DotNetCore.CAP.Sqlite.Test
             {
                 Id = insertedId,
                 Name = "SqliteStorageConnectionTest",
-                Content = "",
+                Content = "test_publish_2019_12_28",
                 StatusName = StatusName.Failed
             };
 
@@ -55,6 +55,7 @@ namespace DotNetCore.CAP.Sqlite.Test
             messageQueryDto.MessageType = MessageType.Publish;
             messageQueryDto.CurrentPage = 0;
             messageQueryDto.PageSize = 10;
+            messageQueryDto.Content = "12";
             var messages = sqliteMonitoringApi.Messages(messageQueryDto);
             Assert.Equal(1, messages.Count);
         }
