@@ -91,7 +91,7 @@ select count(`Id`) from `{0}.received` where `StatusName` = 'Failed';", _prefix)
             }
 
             var sqlQuery =
-                $"select * from `{_prefix}.{tableName}` where 1=1 {where} order by `Added` desc limit @Limit,@Offset";
+                $"select * from `{_prefix}.{tableName}` where 1=1 {where} order by `Added` desc limit @Offset,@Limit";
 
             return UseConnection(conn => conn.Query<MessageDto>(sqlQuery, new
             {
