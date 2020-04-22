@@ -1,44 +1,73 @@
 ﻿// Copyright (c) .NET Core Community. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using Dapper;
+using DotNetCore.CAP.Internal;
+using DotNetCore.CAP.Messages;
+using DotNetCore.CAP.Monitoring;
+using DotNetCore.CAP.Persistence;
+using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using Dapper;
-using DotNetCore.CAP.Dashboard;
-using DotNetCore.CAP.Dashboard.Monitoring;
-using DotNetCore.CAP.Infrastructure;
-using DotNetCore.CAP.Models;
-using Microsoft.Extensions.Options;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace DotNetCore.CAP.Sqlite
 {
     internal class SqliteMonitoringApi : IMonitoringApi
     {
-        private readonly string _prefix;
-        private readonly SqliteStorage _storage;
+        private readonly IOptions<SqliteOptions> _options;
+        private readonly string _published;
+        private readonly string _received;
 
-        public SqliteMonitoringApi(IStorage storage, IOptions<SqliteOptions> options)
+        public SqliteMonitoringApi(
+            IOptions<SqliteOptions> options, 
+            IStorageInitializer initializer)
         {
-            _storage = storage as SqliteStorage ?? throw new ArgumentNullException(nameof(storage));
-            _prefix = options.Value.TableNamePrefix ?? throw new ArgumentNullException(nameof(options));
+            _options = options;
+            _published = initializer.GetPublishedTableName();
+            _received = initializer.GetReceivedTableName();
+        }
+
+        public async Task<MediumMessage> GetPublishedMessageAsync(long id)
+        {
+            var sql = $@"SELECT `Id` as DbId, `Content`,`Added`,`ExpiresAt`,`Retries` FROM `{_published}` WHERE `Id`=@Id;";
+            var sqlParam = new { Id = id };
+            using (var connection = new SqliteConnection(_options.Value.ConnectionString))
+            {
+                return await connection.QueryFirstOrDefaultAsync<MediumMessage>(sql);
+            }
+        }
+
+        public async Task<MediumMessage> GetReceivedMessageAsync(long id)
+        {
+            var sql = $@"SELECT `Id` as DbId, `Content`,`Added`,`ExpiresAt`,`Retries` FROM `{_received}` WHERE Id=@Id;";
+            var sqlParam = new { Id = id };
+            using (var connection = new SqliteConnection(_options.Value.ConnectionString))
+            {
+                return await connection.QueryFirstOrDefaultAsync<MediumMessage>(sql);
+            }
         }
 
         public StatisticsDto GetStatistics()
         {
-            // TODO isolation level
-            var sql = string.Format(@"
-PRAGMA read_uncommitted = 1;
-select count(`Id`) from `{0}.published` where `StatusName` = 'Succeeded';
-select count(`Id`) from `{0}.received` where `StatusName` = 'Succeeded';
-select count(`Id`) from `{0}.published` where `StatusName` = 'Failed';
-select count(`Id`) from `{0}.received` where `StatusName` = 'Failed';", _prefix);
+            var sqlBuilder = new StringBuilder();
+            sqlBuilder.AppendLine("PRAGMA read_uncommitted = 1;")
+                .AppendFormat("select count(`Id`) from `{0}` where `StatusName` = 'Succeeded'", _published)
+                .AppendLine()
+                .AppendFormat("select count(`Id`) from `{0}` where `StatusName` = 'Succeeded'", _received)
+                .AppendLine()
+                .AppendFormat("select count(`Id`) from `{0}` where `StatusName` = 'Failed'", _published)
+                .AppendLine()
+                .AppendFormat("select count(`Id`) from `{0}` where `StatusName` = 'Failed';", _received);
 
             var statistics = UseConnection(connection =>
             {
                 var stats = new StatisticsDto();
-                using (var multi = connection.QueryMultiple(sql))
+                using (var multi = connection.QueryMultiple(sqlBuilder.ToString()))
                 {
                     stats.PublishedSucceeded = multi.ReadSingle<int>();
                     stats.ReceivedSucceeded = multi.ReadSingle<int>();
@@ -54,21 +83,21 @@ select count(`Id`) from `{0}.received` where `StatusName` = 'Failed';", _prefix)
 
         public IDictionary<DateTime, int> HourlyFailedJobs(MessageType type)
         {
-            var tableName = type == MessageType.Publish ? "published" : "received";
+            var tableName = type == MessageType.Publish ? _published : _received;
             return UseConnection(connection =>
-                GetHourlyTimelineStats(connection, tableName, StatusName.Failed));
+                GetHourlyTimelineStats(connection, tableName, nameof(StatusName.Failed)));
         }
 
         public IDictionary<DateTime, int> HourlySucceededJobs(MessageType type)
         {
-            var tableName = type == MessageType.Publish ? "published" : "received";
+            var tableName = type == MessageType.Publish ? _published : _received;
             return UseConnection(connection =>
-                GetHourlyTimelineStats(connection, tableName, StatusName.Succeeded));
+                GetHourlyTimelineStats(connection, tableName, nameof(StatusName.Succeeded)));
         }
 
         public IList<MessageDto> Messages(MessageQueryDto queryDto)
         {
-            var tableName = queryDto.MessageType == MessageType.Publish ? "published" : "received";
+            var tableName = queryDto.MessageType == MessageType.Publish ? _published : _received;
             var where = string.Empty;
             if (!string.IsNullOrEmpty(queryDto.StatusName))
             {
@@ -91,7 +120,7 @@ select count(`Id`) from `{0}.received` where `StatusName` = 'Failed';", _prefix)
             }
 
             var sqlQuery =
-                $"select * from `{_prefix}.{tableName}` where 1=1 {where} order by `Added` desc limit @Offset,@Limit";
+                $"select * from `{tableName}` where 1=1 {where} order by `Added` desc limit @Offset,@Limit";
 
             return UseConnection(conn => conn.Query<MessageDto>(sqlQuery, new
             {
@@ -106,27 +135,27 @@ select count(`Id`) from `{0}.received` where `StatusName` = 'Failed';", _prefix)
 
         public int PublishedFailedCount()
         {
-            return UseConnection(conn => GetNumberOfMessage(conn, "published", StatusName.Failed));
+            return UseConnection(conn => GetNumberOfMessage(conn, _published, nameof(StatusName.Failed)));
         }
 
         public int PublishedSucceededCount()
         {
-            return UseConnection(conn => GetNumberOfMessage(conn, "published", StatusName.Succeeded));
+            return UseConnection(conn => GetNumberOfMessage(conn, _published, nameof(StatusName.Succeeded)));
         }
 
         public int ReceivedFailedCount()
         {
-            return UseConnection(conn => GetNumberOfMessage(conn, "received", StatusName.Failed));
+            return UseConnection(conn => GetNumberOfMessage(conn, _received, nameof(StatusName.Failed)));
         }
 
         public int ReceivedSucceededCount()
         {
-            return UseConnection(conn => GetNumberOfMessage(conn, "received", StatusName.Succeeded));
+            return UseConnection(conn => GetNumberOfMessage(conn, _received, nameof(StatusName.Succeeded)));
         }
 
         private int GetNumberOfMessage(IDbConnection connection, string tableName, string statusName)
         {
-            var sqlQuery = $"select count(`Id`) from `{_prefix}.{tableName}` where `StatusName` = @state";
+            var sqlQuery = $"select count(`Id`) from `{tableName}` where `StatusName` = @state";
 
             var count = connection.ExecuteScalar<int>(sqlQuery, new { state = statusName });
             return count;
@@ -134,7 +163,7 @@ select count(`Id`) from `{0}.received` where `StatusName` = 'Failed';", _prefix)
 
         private T UseConnection<T>(Func<IDbConnection, T> action)
         {
-            return _storage.UseConnection(action);
+            return action(new SqliteConnection(_options.Value.ConnectionString));
         }
 
         private Dictionary<DateTime, int> GetHourlyTimelineStats(IDbConnection connection, string tableName,
@@ -161,13 +190,13 @@ select count(`Id`) from `{0}.received` where `StatusName` = 'Failed';", _prefix)
         {
             var sqlQuery =
                 $@"
-select aggr.* from (
-    select strftime('%Y-%m-%d-%H', `Added`) as Key,
-        count(`id`) as Count
-    from  `{_prefix}.{tableName}`
-    where `StatusName` = @statusName
-    group by strftime('%Y-%m-%d-%H', `Added`)
-) as aggr where aggr.`Key` in @keys;";
+        select aggr.* from (
+            select strftime('%Y-%m-%d-%H', `Added`) as Key,
+                count(`id`) as Count
+            from  `{tableName}`
+            where `StatusName` = @statusName
+            group by strftime('%Y-%m-%d-%H', `Added`)
+        ) as aggr where aggr.`Key` in @keys;";
 
             var valuesMap = connection.Query<TimelineCounter>(
                     sqlQuery,
@@ -190,6 +219,12 @@ select aggr.* from (
             }
 
             return result;
+        }
+
+        class TimelineCounter
+        {
+            public string Key { get; set; }
+            public int Count { get; set; }
         }
     }
 }

@@ -1,29 +1,50 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using DotNetCore.CAP.Persistence;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using System;
 using System.IO;
+using System.Threading;
 
 namespace DotNetCore.CAP.Sqlite.Test
 {
     public abstract class DatabaseTestHost : IDisposable
     {
-        protected ILogger<SqliteStorage> Logger;
+        private readonly IServiceCollection _services;
+        private readonly IServiceProvider _serviceProvider;
+        protected ILogger<SqliteDataStorage> Logger;
         protected IOptions<CapOptions> CapOptions;
         protected IOptions<SqliteOptions> SqliteOptions;
 
         protected DatabaseTestHost()
         {
-            Logger = new Mock<ILogger<SqliteStorage>>().Object;
+            _services = new ServiceCollection();
+            _services.AddOptions();
+            _services.AddLogging();
+            _services.AddCap(options =>
+            {
+                options.UseSqlite(ConnectionUtil.GetConnectionString());
+            });
 
-            var capOptions = new Mock<IOptions<CapOptions>>();
-            capOptions.Setup(x => x.Value).Returns(new CapOptions());
-            CapOptions = capOptions.Object;
+            _serviceProvider = _services.BuildServiceProvider();
 
-            var options = new Mock<IOptions<SqliteOptions>>();
-            options.Setup(x => x.Value).Returns(new SqliteOptions { ConnectionString = ConnectionUtil.GetConnectionString() });
-            SqliteOptions = options.Object;
+            Logger = new Mock<ILogger<SqliteDataStorage>>().Object;
+
+            CapOptions = GetRequiredService<IOptions<CapOptions>>();
+            SqliteOptions = GetRequiredService<IOptions<SqliteOptions>>();
+
             InitializeDatabase();
+        }
+
+        protected T GetService<T>()
+        {
+            return _serviceProvider.GetService<T>();
+        }
+
+        protected T GetRequiredService<T>()
+        {
+            return _serviceProvider.GetRequiredService<T>();
         }
 
         public void Dispose()
@@ -40,10 +61,12 @@ namespace DotNetCore.CAP.Sqlite.Test
                 using (var connection = ConnectionUtil.CreateConnection(sqliteConn))
                 {
                     connection.Open();
+                    var storage = _serviceProvider.GetService<IStorageInitializer>();
+                    var token = new CancellationTokenSource().Token;
+                    storage.InitializeAsync(token).GetAwaiter().GetResult();
                     connection.Close();
                 }
             }
-            new SqliteStorage(Logger, SqliteOptions, CapOptions).InitializeAsync().GetAwaiter().GetResult();
         }
 
 

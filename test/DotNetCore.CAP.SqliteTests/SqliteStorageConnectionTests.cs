@@ -1,8 +1,9 @@
-﻿using Dapper;
-using DotNetCore.CAP.Infrastructure;
-using DotNetCore.CAP.Models;
+﻿using DotNetCore.CAP.Internal;
+using DotNetCore.CAP.Messages;
+using DotNetCore.CAP.Persistence;
 using DotNetCore.CAP.Sqlite.Test;
-using System;
+using Microsoft.Extensions.Options;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -11,84 +12,75 @@ namespace DotNetCore.CAP.Sqlite.Tests
     [Collection("Sqlite")]
     public class SqliteStorageConnectionTests : DatabaseTestHost
     {
-        private readonly SqliteStorageConnection _storage;
+        private readonly SqliteDataStorage _storage;
         public SqliteStorageConnectionTests()
         {
-            _storage = new SqliteStorageConnection(SqliteOptions, CapOptions);
+            var initializer = GetRequiredService<IStorageInitializer>();
+            _storage = new SqliteDataStorage(SqliteOptions, CapOptions, initializer);
         }
 
         [Fact]
-        public async Task GetPublishedMessageAsync_Test()
+        public void StorageMessageTest()
         {
-            var sql = "INSERT INTO `cap.published`(`Id`,`Version`,`Name`,`Content`,`Retries`,`Added`,`ExpiresAt`,`StatusName`) VALUES(@Id,'v1',@Name,@Content,@Retries,@Added,@ExpiresAt,@StatusName);";
-            var insertedId = SnowflakeId.Default().NextId();
-            var publishMessage = new CapPublishedMessage
+            var msgId = SnowflakeId.Default().NextId().ToString();
+            var header = new Dictionary<string, string>()
             {
-                Id = insertedId,
-                Name = "SqliteStorageConnectionTest",
-                Content = "",
-                StatusName = StatusName.Scheduled
+                [Headers.MessageId] = msgId
             };
+            var message = new Message(header, null);
 
-            using (var connection = ConnectionUtil.CreateConnection())
-            {
-                await connection.ExecuteAsync(sql, publishMessage);
-            }
-
-            var message = await _storage.GetPublishedMessageAsync(insertedId);
-            Assert.NotNull(message);
-            Assert.Equal("SqliteStorageConnectionTest", message.Name);
-            Assert.Equal(StatusName.Scheduled, message.StatusName);
+            var mdMessage = _storage.StoreMessage("test.name", message);
+            Assert.NotNull(mdMessage);
         }
 
         [Fact]
-        public void StoreReceivedMessageAsync_Test()
+        public void StoreReceivedMessageTest()
         {
-            var receivedMessage = new CapReceivedMessage
+            var msgId = SnowflakeId.Default().NextId().ToString();
+            var header = new Dictionary<string, string>()
             {
-                Name = "SqliteStorageConnectionTest",
-                Content = "",
-                Group = "mygroup",
-                StatusName = StatusName.Scheduled
+                [Headers.MessageId] = msgId
             };
+            var message = new Message(header, null);
 
-            Exception exception = null;
-            try
-            {
-                _storage.StoreReceivedMessage(receivedMessage);
-            }
-            catch (Exception ex)
-            {
-                exception = ex;
-            }
-            Assert.Null(exception);
+            var mdMessage = _storage.StoreReceivedMessage("test.name", "test.group", message);
+            Assert.NotNull(mdMessage);
         }
 
         [Fact]
-        public async Task GetReceivedMessageAsync_Test()
+        public void StoreReceivedExceptionMessageTest()
         {
-            var sql = @"INSERT INTO `cap.received`(`Id`,`Version`,`Name`,`Group`,`Content`,`Retries`,`Added`,`ExpiresAt`,`StatusName`) VALUES(@Id,'v1',@Name,@Group,@Content,@Retries,@Added,@ExpiresAt,@StatusName);";
-            var insertedId = SnowflakeId.Default().NextId();
-            var receivedMessage = new CapReceivedMessage
+            _storage.StoreReceivedExceptionMessage("test.name", "test.group", "");
+        }
+
+        [Fact]
+        public async Task ChangePublishStateTest()
+        {
+            var msgId = SnowflakeId.Default().NextId().ToString();
+            var header = new Dictionary<string, string>()
             {
-                Id = insertedId,
-                Name = "SqliteStorageConnectionTest",
-                Content = "",
-                Group = "mygroup",
-                StatusName = StatusName.Scheduled
+                [Headers.MessageId] = msgId
             };
+            var message = new Message(header, null);
 
-            using (var connection = ConnectionUtil.CreateConnection())
+            var mdMessage = _storage.StoreMessage("test.name", message);
+
+            await _storage.ChangePublishStateAsync(mdMessage, StatusName.Succeeded);
+        }
+
+        [Fact]
+        public async Task ChangeReceiveStateTest()
+        {
+            var msgId = SnowflakeId.Default().NextId().ToString();
+            var header = new Dictionary<string, string>()
             {
-                await connection.ExecuteAsync(sql, receivedMessage);
-            }
+                [Headers.MessageId] = msgId
+            };
+            var message = new Message(header, null);
 
-            var message = await _storage.GetReceivedMessageAsync(insertedId);
+            var mdMessage = _storage.StoreMessage("test.name", message);
 
-            Assert.NotNull(message);
-            Assert.Equal(StatusName.Scheduled, message.StatusName);
-            Assert.Equal("SqliteStorageConnectionTest", message.Name);
-            Assert.Equal("mygroup", message.Group);
+            await _storage.ChangeReceiveStateAsync(mdMessage, StatusName.Succeeded);
         }
     }
 }

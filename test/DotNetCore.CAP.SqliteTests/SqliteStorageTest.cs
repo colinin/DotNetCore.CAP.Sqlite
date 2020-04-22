@@ -23,8 +23,8 @@ namespace DotNetCore.CAP.Sqlite.Test
         }
 
         [Theory]
-        [InlineData("cap.published")]
-        [InlineData("cap.received")]
+        [InlineData("cap.Published")]
+        [InlineData("cap.Received")]
         public void DatabaseTable_IsExists(string tableName)
         {
             using (var connection = ConnectionUtil.CreateConnection(_dbConnectionString))

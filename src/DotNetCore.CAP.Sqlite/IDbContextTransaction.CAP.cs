@@ -1,8 +1,10 @@
 ﻿// Copyright (c) .NET Core Community. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using DotNetCore.CAP;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 // ReSharper disable once CheckNamespace
 namespace Microsoft.EntityFrameworkCore.Storage
@@ -29,9 +31,25 @@ namespace Microsoft.EntityFrameworkCore.Storage
             _transaction.Commit();
         }
 
+        public async Task CommitAsync(CancellationToken cancellationToken = default)
+        {
+            await _transaction.CommitAsync();
+        }
+
         public void Rollback()
         {
             _transaction.Rollback();
+        }
+
+        public async Task RollbackAsync(CancellationToken cancellationToken = default)
+        {
+            await _transaction.RollbackAsync();
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            Dispose();
+            return new ValueTask();
         }
 
         public Guid TransactionId { get; }
