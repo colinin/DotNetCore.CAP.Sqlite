@@ -1,0 +1,33 @@
+name: .NET Core
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 3.1.101
+    - name: Install dependencies
+      run: dotnet restore
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+    - name: Test
+      run: dotnet test --no-restore --verbosity normal
+    - name: Install Nuget
+      run: |
+         $sourceNugetExe = "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe"
+         $targetNugetExe = "nuget.exe"
+         Invoke-WebRequest $sourceNugetExe -OutFile $targetNugetExe
+    - name: Publish
+      run: |
+        .\nuget push .\DotNetCore.CAP.Sqlite\bin\Release\*.nupkg -Source https://api.nuget.org/v3/index.json -SkipDuplicate -ApiKey ${{ secrets.NugetKey }} -NoSymbols 
