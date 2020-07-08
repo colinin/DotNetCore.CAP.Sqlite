@@ -38,7 +38,7 @@ namespace DotNetCore.CAP.Sqlite
             var sqlParam = new { Id = id };
             using (var connection = new SqliteConnection(_options.Value.ConnectionString))
             {
-                return await connection.QueryFirstOrDefaultAsync<MediumMessage>(sql);
+                return await connection.QueryFirstOrDefaultAsync<MediumMessage>(sql, sqlParam);
             }
         }
 
@@ -48,7 +48,7 @@ namespace DotNetCore.CAP.Sqlite
             var sqlParam = new { Id = id };
             using (var connection = new SqliteConnection(_options.Value.ConnectionString))
             {
-                return await connection.QueryFirstOrDefaultAsync<MediumMessage>(sql);
+                return await connection.QueryFirstOrDefaultAsync<MediumMessage>(sql, sqlParam);
             }
         }
 
@@ -56,11 +56,11 @@ namespace DotNetCore.CAP.Sqlite
         {
             var sqlBuilder = new StringBuilder();
             sqlBuilder.AppendLine("PRAGMA read_uncommitted = 1;")
-                .AppendFormat("select count(`Id`) from `{0}` where `StatusName` = 'Succeeded'", _published)
+                .AppendFormat("select count(`Id`) from `{0}` where `StatusName` = 'Succeeded';", _published)
                 .AppendLine()
-                .AppendFormat("select count(`Id`) from `{0}` where `StatusName` = 'Succeeded'", _received)
+                .AppendFormat("select count(`Id`) from `{0}` where `StatusName` = 'Succeeded';", _received)
                 .AppendLine()
-                .AppendFormat("select count(`Id`) from `{0}` where `StatusName` = 'Failed'", _published)
+                .AppendFormat("select count(`Id`) from `{0}` where `StatusName` = 'Failed';", _published)
                 .AppendLine()
                 .AppendFormat("select count(`Id`) from `{0}` where `StatusName` = 'Failed';", _received);
 

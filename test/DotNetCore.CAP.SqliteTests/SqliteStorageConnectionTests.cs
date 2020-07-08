@@ -9,7 +9,7 @@ using Xunit;
 
 namespace DotNetCore.CAP.Sqlite.Tests
 {
-    [Collection("Sqlite")]
+    [Collection("SqliteStorageConnection")]
     public class SqliteStorageConnectionTests : DatabaseTestHost
     {
         private readonly SqliteDataStorage _storage;
