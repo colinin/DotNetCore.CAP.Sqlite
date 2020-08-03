@@ -1,5 +1,6 @@
 ﻿using DotNetCore.CAP.Internal;
 using DotNetCore.CAP.Messages;
+using DotNetCore.CAP.Monitoring;
 using DotNetCore.CAP.Persistence;
 using DotNetCore.CAP.Sqlite.Test;
 using Microsoft.Extensions.Options;
@@ -13,6 +14,7 @@ namespace DotNetCore.CAP.Sqlite.Tests
     public class SqliteStorageConnectionTests : DatabaseTestHost
     {
         private readonly SqliteDataStorage _storage;
+        private readonly IMonitoringApi _monitoring;
         public SqliteStorageConnectionTests()
         {
             var initializer = GetRequiredService<IStorageInitializer>();

@@ -1,4 +1,5 @@
-﻿using DotNetCore.CAP.Messages;
+﻿using DotNetCore.CAP.Internal;
+using DotNetCore.CAP.Messages;
 using DotNetCore.CAP.Monitoring;
 using DotNetCore.CAP.Persistence;
 using DotNetCore.CAP.Serialization;
@@ -21,30 +22,67 @@ namespace DotNetCore.CAP.Sqlite.Test
 
         private void Initialize(IDataStorage storage)
         {
+            _publishedMessageId = SnowflakeId.Default().NextId();
             var publishMessage = storage.StoreMessage("test.publish.message", new Message(
                 new Dictionary<string, string>()
                 {
-                    [Headers.MessageId] = "1000000000",
+                    [Headers.MessageId] = _publishedMessageId.ToString(),
                     ["test-header"] = "test-value"
                 }, null));
             storage.ChangePublishStateAsync(publishMessage, Internal.StatusName.Succeeded);
+            
             var receivedMessage = storage.StoreReceivedMessage("test.received.message", "test.group", new Message(
                 new Dictionary<string, string>()
                 {
-                    [Headers.MessageId] = "1000000001",
+                    [Headers.MessageId] = SnowflakeId.Default().NextId().ToString(),
                     ["test-header"] = "test-value"
                 }, null));
             _receivedMessageId = long.Parse(receivedMessage.DbId);
             storage.ChangeReceiveStateAsync(receivedMessage, Internal.StatusName.Failed);
         }
 
+        [Fact]
+        public void Messages_Test()
+        {
+            var normalMessageDto = new MessageQueryDto
+            {
+                StatusName = nameof(Internal.StatusName.Succeeded),
+                MessageType = MessageType.Publish,
+                CurrentPage = 0,
+                PageSize = 10
+            };
+            var normalMessags = _monitoring.Messages(normalMessageDto);
+
+            var lowercaseMessageDto = new MessageQueryDto
+            {
+                StatusName = nameof(Internal.StatusName.Succeeded).ToLower(),
+                MessageType = MessageType.Publish,
+                CurrentPage = 0,
+                PageSize = 10
+            };
+            var lowercaseMessags = _monitoring.Messages(lowercaseMessageDto);
+
+            var uppercaseMessageDto = new MessageQueryDto
+            {
+                StatusName = nameof(Internal.StatusName.Succeeded).ToUpper(),
+                MessageType = MessageType.Publish,
+                CurrentPage = 0,
+                PageSize = 10
+            };
+            var uppercaseMessags = _monitoring.Messages(uppercaseMessageDto);
+
+            Assert.Equal(1, normalMessags.Count);
+            Assert.Equal(1, lowercaseMessags.Count);
+            Assert.Equal(1, uppercaseMessags.Count);
+        }
+
+        private long _publishedMessageId;
         private long _receivedMessageId;
 
-        [Theory]
-        [InlineData(1000000000)]
-        public async Task Get_Published_Message_Test(long id)
+        [Fact]
+        public async Task Get_Published_Message_Test()
         {
-            var message = await _monitoring.GetPublishedMessageAsync(id);
+            var message = await _monitoring.GetPublishedMessageAsync(_publishedMessageId);
             message.Origin = StringSerializer.DeSerialize(message.Content);
             var headerExists = message.Origin.Headers.ContainsKey("test-header");
             Assert.True(headerExists);
