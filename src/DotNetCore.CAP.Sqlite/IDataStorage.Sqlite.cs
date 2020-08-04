@@ -188,7 +188,7 @@ namespace DotNetCore.CAP.Sqlite
         public async Task<IEnumerable<MediumMessage>> GetPublishedMessagesOfNeedRetry()
         {
             var fourMinAgo = DateTime.Now.AddMinutes(-4).ToString("O");
-            var sql = $"SELECT * FROM `{_initializer.GetPublishedTableName()}` WHERE `Retries` < @Retries AND `Version` = @Version AND `Added` < @Added AND (`StatusName` = @FailedStatusName OR `StatusName` = @ScheduledStatusName) LIMIT 200;";
+            var sql = $"SELECT `Id`,`Content`,`Retries`,`Added` FROM `{_initializer.GetPublishedTableName()}` WHERE `Retries` < @Retries AND `Version` = @Version AND `Added` < @Added AND (`StatusName` = @FailedStatusName OR `StatusName` = @ScheduledStatusName) LIMIT 200;";
             var sqlParam = new
             {
                 FailedStatusName = nameof(StatusName.Failed),
@@ -200,25 +200,28 @@ namespace DotNetCore.CAP.Sqlite
             var result = new List<MediumMessage>();
             using (var connection = new SqliteConnection(_options.Value.ConnectionString))
             {
-                var reader = await connection.ExecuteReaderAsync(sql, sqlParam);
-                while (reader.Read())
+                using (var reader = await connection.ExecuteReaderAsync(sql, sqlParam))
                 {
-                    result.Add(new MediumMessage
+                    while (reader.Read())
                     {
-                        DbId = reader.GetInt64(0).ToString(),
-                        Origin = StringSerializer.DeSerialize(reader.GetString(3)),
-                        Retries = reader.GetInt32(4),
-                        Added = reader.GetDateTime(5)
-                    });
+                        var mediumMessage = new MediumMessage
+                        {
+                            DbId = reader.GetInt64(0).ToString(),
+                            Origin = StringSerializer.DeSerialize(reader.GetString(1)),
+                            Retries = reader.GetInt32(2),
+                            Added = reader.GetDateTime(3)
+                        };
+                        result.Add(mediumMessage);
+                    }
+                    return result;
                 }
-                return result;
             }
         }
 
         public async Task<IEnumerable<MediumMessage>> GetReceivedMessagesOfNeedRetry()
         {
             var fourMinsAgo = DateTime.Now.AddMinutes(-4).ToString("O");
-            var sql = $"SELECT * FROM `{_initializer.GetReceivedTableName()}` WHERE `Retries` < @Retries AND `Version` = @Version AND `Added` < @Added AND (`StatusName` = @FailedStatusName OR `StatusName` = @ScheduledStatusName) LIMIT 200;";
+            var sql = $"SELECT `Id`,`Content`,`Retries`,`Added` FROM `{_initializer.GetReceivedTableName()}` WHERE `Retries` < @Retries AND `Version` = @Version AND `Added` < @Added AND (`StatusName` = @FailedStatusName OR `StatusName` = @ScheduledStatusName) LIMIT 200;";
             var sqlParam = new
             {
                 FailedStatusName = nameof(StatusName.Failed),
@@ -230,18 +233,21 @@ namespace DotNetCore.CAP.Sqlite
             var result = new List<MediumMessage>();
             using (var connection = new SqliteConnection(_options.Value.ConnectionString))
             {
-                var reader = await connection.ExecuteReaderAsync(sql, sqlParam);
-                while (reader.Read())
+                using (var reader = await connection.ExecuteReaderAsync(sql, sqlParam))
                 {
-                    result.Add(new MediumMessage
+                    while (reader.Read())
                     {
-                        DbId = reader.GetInt64(0).ToString(),
-                        Origin = StringSerializer.DeSerialize(reader.GetString(3)),
-                        Retries = reader.GetInt32(4),
-                        Added = reader.GetDateTime(5)
-                    });
+                        var mediumMessage = new MediumMessage
+                        {
+                            DbId = reader.GetInt64(0).ToString(),
+                            Origin = StringSerializer.DeSerialize(reader.GetString(1)),
+                            Retries = reader.GetInt32(2),
+                            Added = reader.GetDateTime(3)
+                        };
+                        result.Add(mediumMessage);
+                    }
+                    return result;
                 }
-                return result;
             }
         }
 
