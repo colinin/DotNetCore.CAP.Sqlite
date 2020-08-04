@@ -4,6 +4,7 @@ using DotNetCore.CAP.Monitoring;
 using DotNetCore.CAP.Persistence;
 using DotNetCore.CAP.Serialization;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -12,6 +13,7 @@ namespace DotNetCore.CAP.Sqlite.Test
     [Collection("SqliteMonitoringApi")]
     public class SqliteMonitoringApiTests : DatabaseTestHost
     {
+        protected override string DataBaseName => @".\DotNetCore.CAP.Sqlite.Test.Monitoring.db";
         private readonly IMonitoringApi _monitoring;
         public SqliteMonitoringApiTests()
         {
@@ -135,6 +137,26 @@ namespace DotNetCore.CAP.Sqlite.Test
         {
             var receivedSucceededCount = _monitoring.ReceivedSucceededCount();
             Assert.Equal(0, receivedSucceededCount);
+        }
+
+        [Fact]
+        public void Hourly_Failed_Jobs_Test()
+        {
+            var failedPublishJobs = _monitoring.HourlyFailedJobs(MessageType.Publish);
+            var failedReceivedJobs = _monitoring.HourlyFailedJobs(MessageType.Subscribe);
+
+            Assert.Equal(0, failedPublishJobs.Values.Sum());
+            Assert.Equal(1, failedReceivedJobs.Values.Sum());
+        }
+
+        [Fact]
+        public void Hourly_Succeeded_Jobs_Test()
+        {
+            var successedPublishJobs = _monitoring.HourlySucceededJobs(MessageType.Publish);
+            var successedReceivedJobs = _monitoring.HourlySucceededJobs(MessageType.Subscribe);
+
+            Assert.Equal(0, successedReceivedJobs.Values.Sum());
+            Assert.Equal(1, successedPublishJobs.Values.Sum());
         }
     }
 }

@@ -7,18 +7,18 @@ namespace DotNetCore.CAP.Sqlite.Test
     [Collection("Sqlite")]
     public class SqliteStorageTest : DatabaseTestHost
     {
+        protected override string DataBaseName => @".\DotNetCore.CAP.Sqlite.Test.Storage.db";
         private readonly string _dbConnectionString;
 
         public SqliteStorageTest()
         {
-            _dbConnectionString = ConnectionUtil.GetConnectionString();
+            _dbConnectionString = ConnectionUtil.GetConnectionString(DataBaseName);
         }
 
         [Fact]
         public void Database_IsExists()
         {
-            var databaseName = ConnectionUtil.GetDatabaseName();
-            var databaseExists = File.Exists(databaseName);
+            var databaseExists = File.Exists(DataBaseName);
             Assert.True(databaseExists);
         }
 

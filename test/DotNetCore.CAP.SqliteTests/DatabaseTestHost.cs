@@ -11,6 +11,7 @@ namespace DotNetCore.CAP.Sqlite.Test
 {
     public abstract class DatabaseTestHost : IDisposable
     {
+        protected virtual string DataBaseName => @".\DotNetCore.CAP.Sqlite.Test.db";
         private readonly IServiceCollection _services;
         private readonly IServiceProvider _serviceProvider;
         protected ILogger<SqliteDataStorage> Logger;
@@ -24,7 +25,7 @@ namespace DotNetCore.CAP.Sqlite.Test
             _services.AddLogging();
             _services.AddCap(options =>
             {
-                options.UseSqlite(ConnectionUtil.GetConnectionString());
+                options.UseSqlite(ConnectionUtil.GetConnectionString(DataBaseName));
             });
 
             _serviceProvider = _services.BuildServiceProvider();
@@ -54,9 +55,8 @@ namespace DotNetCore.CAP.Sqlite.Test
 
         private void InitializeDatabase()
         {
-            var sqliteConn = ConnectionUtil.GetConnectionString();
-            var databaseName = ConnectionUtil.GetDatabaseName();
-            if (!File.Exists(databaseName))
+            var sqliteConn = ConnectionUtil.GetConnectionString(DataBaseName);
+            if (!File.Exists(DataBaseName))
             {
                 using (var connection = ConnectionUtil.CreateConnection(sqliteConn))
                 {
@@ -72,10 +72,9 @@ namespace DotNetCore.CAP.Sqlite.Test
 
         private void DeleteAllData()
         {
-            var databaseName = ConnectionUtil.GetDatabaseName();
-            if (File.Exists(databaseName))
+            if (File.Exists(DataBaseName))
             {
-                File.Delete(databaseName);
+                File.Delete(DataBaseName);
             }
         }
     }
