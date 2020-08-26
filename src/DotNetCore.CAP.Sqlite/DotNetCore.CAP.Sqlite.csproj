@@ -3,23 +3,21 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>3.0.4.2</Version>
+    <Version>3.1.0</Version>
     <RepositoryUrl>https://github.com/colinin/DotNetCore.CAP.Sqlite</RepositoryUrl>
     <Authors>Colin</Authors>
     <Description>CAP持久化Sqlite实现</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
     <PackageProjectUrl>https://github.com/colinin/DotNetCore.CAP.Sqlite</PackageProjectUrl>
-    <PackageReleaseNotes>Fixed invalid query bug caused by SQLite case sensitive
-
-Fixed SQLite DbReader not being released in time</PackageReleaseNotes>
+    <PackageReleaseNotes>upgrde cap to 3.1.0</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Dapper" Version="2.0.35" />
-    <PackageReference Include="DotNetCore.CAP" Version="3.0.4" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="3.1.5" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="3.1.5" />
+    <PackageReference Include="DotNetCore.CAP" Version="3.1.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="3.1.7" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="3.1.7" />
   </ItemGroup>
 
 </Project>
