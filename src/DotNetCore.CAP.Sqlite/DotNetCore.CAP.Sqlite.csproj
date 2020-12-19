@@ -10,7 +10,7 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
     <PackageProjectUrl>https://github.com/colinin/DotNetCore.CAP.Sqlite</PackageProjectUrl>
-    <PackageReleaseNotes>upgrde cap to 3.1.1</PackageReleaseNotes>
+    <PackageReleaseNotes>upgrde cap to 3.1.2</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
