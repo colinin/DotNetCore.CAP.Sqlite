@@ -23,54 +23,32 @@ namespace DotNetCore.CAP.Sqlite
         private readonly IOptions<CapOptions> _capOptions;
         private readonly IOptions<SqliteOptions> _options;
         private readonly IStorageInitializer _initializer;
+        //private readonly ISerializer _serializer;
 
         public SqliteDataStorage(
             IOptions<SqliteOptions> options, 
             IOptions<CapOptions> capOptions,
-            IStorageInitializer initializer)
+            IStorageInitializer initializer
+            //ISerializer serializer
+            )
         {
             _options = options;
             _capOptions = capOptions;
+            //_serializer = serializer;
             _initializer = initializer;
         }
 
-        public async Task ChangePublishStateAsync(MediumMessage message, StatusName state)
+        public virtual async Task ChangePublishStateAsync(MediumMessage message, StatusName state)
         {
-            var sql =
-                $"UPDATE `{_initializer.GetPublishedTableName()}` SET `Retries` = @Retries,`ExpiresAt` = @ExpiresAt,`StatusName` = @StatusName WHERE `Id` = @Id";
-            var sqlParam = new
-            {
-                Id = message.DbId,
-                Retries = message.Retries,
-                ExpiresAt = message.ExpiresAt,
-                StatusName = state.ToString("G")
-            };
-
-            using (var connection = new SqliteConnection(_options.Value.ConnectionString))
-            {
-                await connection.ExecuteAsync(sql, sqlParam);
-            };
+            await ChangeMessageStateAsync(_initializer.GetPublishedTableName(), message, state);
         }
 
-        public async Task ChangeReceiveStateAsync(MediumMessage message, StatusName state)
+        public virtual async Task ChangeReceiveStateAsync(MediumMessage message, StatusName state)
         {
-            var sql =
-                $"UPDATE `{_initializer.GetReceivedTableName()}` SET `Retries` = @Retries,`ExpiresAt` = @ExpiresAt,`StatusName` = @StatusName WHERE `Id` = @Id";
-            var sqlParam = new
-            {
-                Id = message.DbId,
-                Retries = message.Retries,
-                ExpiresAt = message.ExpiresAt,
-                StatusName = state.ToString("G")
-            };
-
-            using (var connection = new SqliteConnection(_options.Value.ConnectionString))
-            {
-                await connection.ExecuteAsync(sql, sqlParam);
-            };
+            await ChangeMessageStateAsync(_initializer.GetReceivedTableName(), message, state);
         }
 
-        public MediumMessage StoreMessage(string name, Message content, object dbTransaction = null)
+        public virtual MediumMessage StoreMessage(string name, Message content, object dbTransaction = null)
         {
             var sql = $"INSERT INTO `{_initializer.GetPublishedTableName()}` (`Id`,`Version`,`Name`,`Content`,`Retries`,`Added`,`ExpiresAt`,`StatusName`)" +
                 $"VALUES(@Id,@Version,@Name,@Content,@Retries,@Added,@ExpiresAt,@StatusName);";
@@ -119,7 +97,7 @@ namespace DotNetCore.CAP.Sqlite
             return message;
         }
 
-        public void StoreReceivedExceptionMessage(string name, string group, string content)
+        public virtual void StoreReceivedExceptionMessage(string name, string group, string content)
         {
             var sql = $@"INSERT INTO `{_initializer.GetReceivedTableName()}`(`Id`,`Version`,`Name`,`Group`,`Content`,`Retries`,`Added`,`ExpiresAt`,`StatusName`) VALUES(@Id,@Version,@Name,@Group,@Content,@Retries,@Added,@ExpiresAt,@StatusName);";
             var sqlParam = new
@@ -140,7 +118,7 @@ namespace DotNetCore.CAP.Sqlite
             }
         }
 
-        public MediumMessage StoreReceivedMessage(string name, string group, Message message)
+        public virtual MediumMessage StoreReceivedMessage(string name, string group, Message message)
         {
             var sql = $@"INSERT INTO `{_initializer.GetReceivedTableName()}`(`Id`,`Version`,`Name`,`Group`,`Content`,`Retries`,`Added`,`ExpiresAt`,`StatusName`) VALUES(@Id,@Version,@Name,@Group,@Content,@Retries,@Added,@ExpiresAt,@StatusName);";
             var mdMessage = new MediumMessage
@@ -172,7 +150,7 @@ namespace DotNetCore.CAP.Sqlite
             return mdMessage;
         }
 
-        public async Task<int> DeleteExpiresAsync(string table, DateTime timeout, int batchCount = 1000, CancellationToken token = default)
+        public virtual async Task<int> DeleteExpiresAsync(string table, DateTime timeout, int batchCount = 1000, CancellationToken token = default)
         {
             // TODO: Need to enable limit support
             // https://sqlite.org/compile.html#enable_update_delete_limit
@@ -185,10 +163,44 @@ namespace DotNetCore.CAP.Sqlite
             }
         }
 
-        public async Task<IEnumerable<MediumMessage>> GetPublishedMessagesOfNeedRetry()
+        public virtual async Task<IEnumerable<MediumMessage>> GetPublishedMessagesOfNeedRetry()
+        {
+            return await GetMessagesOfNeedRetryAsync(_initializer.GetPublishedTableName());
+        }
+
+        public virtual async Task<IEnumerable<MediumMessage>> GetReceivedMessagesOfNeedRetry()
+        {
+            return await GetMessagesOfNeedRetryAsync(_initializer.GetReceivedTableName());
+        }
+
+        IMonitoringApi IDataStorage.GetMonitoringApi()
+        {
+            return new SqliteMonitoringApi(_options, _initializer);
+        }
+
+        protected virtual async Task ChangeMessageStateAsync(string tableName, MediumMessage message, StatusName state)
+        {
+            var sql =
+               $"UPDATE `{tableName}` SET `Content`=@Content,`Retries` = @Retries,`ExpiresAt` = @ExpiresAt,`StatusName` = @StatusName WHERE `Id` = @Id";
+            var sqlParam = new
+            {
+                Id = message.DbId,
+                Retries = message.Retries,
+                ExpiresAt = message.ExpiresAt,
+                StatusName = state.ToString("G"),
+                Content = StringSerializer.Serialize(message.Origin)
+            };
+
+            using (var connection = new SqliteConnection(_options.Value.ConnectionString))
+            {
+                await connection.ExecuteAsync(sql, sqlParam);
+            };
+        }
+
+        protected virtual async Task<IEnumerable<MediumMessage>> GetMessagesOfNeedRetryAsync(string tableName)
         {
             var fourMinAgo = DateTime.Now.AddMinutes(-4).ToString("O");
-            var sql = $"SELECT `Id`,`Content`,`Retries`,`Added` FROM `{_initializer.GetPublishedTableName()}` WHERE `Retries` < @Retries AND `Version` = @Version AND `Added` < @Added AND (`StatusName` = @FailedStatusName OR `StatusName` = @ScheduledStatusName) LIMIT 200;";
+            var sql = $"SELECT `Id`,`Content`,`Retries`,`Added` FROM `{tableName}` WHERE `Retries` < @Retries AND `Version` = @Version AND `Added` < @Added AND (`StatusName` = @FailedStatusName OR `StatusName` = @ScheduledStatusName) LIMIT 200;";
             var sqlParam = new
             {
                 FailedStatusName = nameof(StatusName.Failed),
@@ -216,44 +228,6 @@ namespace DotNetCore.CAP.Sqlite
                     return result;
                 }
             }
-        }
-
-        public async Task<IEnumerable<MediumMessage>> GetReceivedMessagesOfNeedRetry()
-        {
-            var fourMinsAgo = DateTime.Now.AddMinutes(-4).ToString("O");
-            var sql = $"SELECT `Id`,`Content`,`Retries`,`Added` FROM `{_initializer.GetReceivedTableName()}` WHERE `Retries` < @Retries AND `Version` = @Version AND `Added` < @Added AND (`StatusName` = @FailedStatusName OR `StatusName` = @ScheduledStatusName) LIMIT 200;";
-            var sqlParam = new
-            {
-                FailedStatusName = nameof(StatusName.Failed),
-                ScheduledStatusName = nameof(StatusName.Scheduled),
-                Retries = _capOptions.Value.FailedRetryCount,
-                Version = _capOptions.Value.Version,
-                Added = fourMinsAgo
-            };
-            var result = new List<MediumMessage>();
-            using (var connection = new SqliteConnection(_options.Value.ConnectionString))
-            {
-                using (var reader = await connection.ExecuteReaderAsync(sql, sqlParam))
-                {
-                    while (reader.Read())
-                    {
-                        var mediumMessage = new MediumMessage
-                        {
-                            DbId = reader.GetInt64(0).ToString(),
-                            Origin = StringSerializer.DeSerialize(reader.GetString(1)),
-                            Retries = reader.GetInt32(2),
-                            Added = reader.GetDateTime(3)
-                        };
-                        result.Add(mediumMessage);
-                    }
-                    return result;
-                }
-            }
-        }
-
-        IMonitoringApi IDataStorage.GetMonitoringApi()
-        {
-            return new SqliteMonitoringApi(_options, _initializer);
         }
     }
 }
