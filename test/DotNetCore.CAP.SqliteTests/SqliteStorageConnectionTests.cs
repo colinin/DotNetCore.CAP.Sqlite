@@ -1,6 +1,7 @@
 ﻿using DotNetCore.CAP.Internal;
 using DotNetCore.CAP.Messages;
 using DotNetCore.CAP.Persistence;
+using DotNetCore.CAP.Serialization;
 using DotNetCore.CAP.Sqlite.Test;
 using System;
 using System.Collections.Generic;
@@ -17,8 +18,9 @@ namespace DotNetCore.CAP.Sqlite.Tests
         private readonly SqliteDataStorage _storage;
         public SqliteStorageConnectionTests()
         {
+            var serializer = GetRequiredService<ISerializer>();
             _initializer = GetRequiredService<IStorageInitializer>();
-            _storage = new SqliteDataStorage(SqliteOptions, CapOptions, _initializer);
+            _storage = new SqliteDataStorage(SqliteOptions, CapOptions, _initializer, serializer);
         }
 
         [Fact]

@@ -15,8 +15,11 @@ namespace DotNetCore.CAP.Sqlite.Test
     {
         protected override string DataBaseName => @".\DotNetCore.CAP.Sqlite.Test.Monitoring.db";
         private readonly IMonitoringApi _monitoring;
+        private readonly ISerializer _serializer;
+
         public SqliteMonitoringApiTests()
         {
+            _serializer = GetRequiredService<ISerializer>();
             var storage = GetRequiredService<IDataStorage>();
             _monitoring = storage.GetMonitoringApi();
             Initialize(storage);
@@ -85,7 +88,7 @@ namespace DotNetCore.CAP.Sqlite.Test
         public async Task Get_Published_Message_Test()
         {
             var message = await _monitoring.GetPublishedMessageAsync(_publishedMessageId);
-            message.Origin = StringSerializer.DeSerialize(message.Content);
+            message.Origin = _serializer.Deserialize(message.Content);
             var headerExists = message.Origin.Headers.ContainsKey("test-header");
             Assert.True(headerExists);
             Assert.Equal("test-value", message.Origin.Headers["test-header"]);
@@ -95,7 +98,7 @@ namespace DotNetCore.CAP.Sqlite.Test
         public async Task Get_Received_Message_Test()
         {
             var message = await _monitoring.GetReceivedMessageAsync(_receivedMessageId);
-            message.Origin = StringSerializer.DeSerialize(message.Content);
+            message.Origin = _serializer.Deserialize(message.Content);
             var headerExists = message.Origin.Headers.ContainsKey("test-header");
             Assert.True(headerExists);
             Assert.Equal("test-value", message.Origin.Headers["test-header"]);

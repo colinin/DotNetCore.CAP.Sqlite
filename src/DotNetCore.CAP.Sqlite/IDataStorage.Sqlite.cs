@@ -23,18 +23,18 @@ namespace DotNetCore.CAP.Sqlite
         private readonly IOptions<CapOptions> _capOptions;
         private readonly IOptions<SqliteOptions> _options;
         private readonly IStorageInitializer _initializer;
-        //private readonly ISerializer _serializer;
+        private readonly ISerializer _serializer;
 
         public SqliteDataStorage(
             IOptions<SqliteOptions> options, 
             IOptions<CapOptions> capOptions,
-            IStorageInitializer initializer
-            //ISerializer serializer
+            IStorageInitializer initializer,
+            ISerializer serializer
             )
         {
             _options = options;
             _capOptions = capOptions;
-            //_serializer = serializer;
+            _serializer = serializer;
             _initializer = initializer;
         }
 
@@ -57,7 +57,7 @@ namespace DotNetCore.CAP.Sqlite
             {
                 DbId = content.GetId(),
                 Origin = content,
-                Content = StringSerializer.Serialize(content),
+                Content = _serializer.Serialize(content),
                 Added = DateTime.Now,
                 ExpiresAt = null,
                 Retries = 0
@@ -129,7 +129,7 @@ namespace DotNetCore.CAP.Sqlite
                 ExpiresAt = null,
                 Retries = 0
             };
-            var content = StringSerializer.Serialize(mdMessage.Origin);
+            var content = _serializer.Serialize(mdMessage.Origin);
             var sqlParam = new
             {
                 Id = mdMessage.DbId,
@@ -188,7 +188,7 @@ namespace DotNetCore.CAP.Sqlite
                 Retries = message.Retries,
                 ExpiresAt = message.ExpiresAt,
                 StatusName = state.ToString("G"),
-                Content = StringSerializer.Serialize(message.Origin)
+                Content = _serializer.Serialize(message.Origin)
             };
 
             using (var connection = new SqliteConnection(_options.Value.ConnectionString))
@@ -219,7 +219,7 @@ namespace DotNetCore.CAP.Sqlite
                         var mediumMessage = new MediumMessage
                         {
                             DbId = reader.GetInt64(0).ToString(),
-                            Origin = StringSerializer.DeSerialize(reader.GetString(1)),
+                            Origin = _serializer.Deserialize(reader.GetString(1)),
                             Retries = reader.GetInt32(2),
                             Added = reader.GetDateTime(3)
                         };
