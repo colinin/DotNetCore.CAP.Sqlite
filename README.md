@@ -9,10 +9,10 @@ services.AddCap(x =>
             {
                 x.UseSqlite(cfg =>
                 {
-                    cfg.ConnectionString = "Data Source=.\\eventpublisher.db";
+                    cfg.ConnectionString = "Data Source=./cap-event.db";
                 });
                 
-                //x.UseSqlite("Data Source=.\\eventpublisher.db");
+                //x.UseSqlite("Data Source=./cap-event.db");
                 
                 // other...
             });
