@@ -23,9 +23,12 @@ jobs:
       run: dotnet build --configuration Release --no-restore
     - name: Test
       run: dotnet test --no-restore --verbosity normal
-    - name: Publish
-      uses: brandedoutcast/publish-nuget@v2.5.5
+    - name: Install NuGet
+      uses: nuget/setup-nuget@v1
       with:
-        PROJECT_FILE_PATH: src/DotNetCore.CAP.Sqlite/DotNetCore.CAP.Sqlite.csproj
-        NUGET_KEY: ${{secrets.NUGETKEY}}
-        INCLUDE_SYMBOLS: true
+        nuget-version: '5.x'
+    - name: Generated Package
+      run: dotnet pack --include-symbols -p:SymbolPackageFormat=snupkg --no-build -c Release
+    - name: Publish Package
+      run:
+        dotnet nuget push ./src/DotNetCore.CAP.Sqlite/bin/Release/*.nupkg --api-key ${{ secrets.NUGETKEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
