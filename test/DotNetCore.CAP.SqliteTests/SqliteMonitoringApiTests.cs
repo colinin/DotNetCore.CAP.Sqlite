@@ -76,9 +76,14 @@ namespace DotNetCore.CAP.Sqlite.Test
             };
             var uppercaseMessags = _monitoring.Messages(uppercaseMessageDto);
 
-            Assert.Equal(1, normalMessags.Count);
-            Assert.Equal(1, lowercaseMessags.Count);
-            Assert.Equal(1, uppercaseMessags.Count);
+            Assert.Equal(1, normalMessags.Items.Count);
+            Assert.Equal(1, normalMessags.Totals);
+
+            Assert.Equal(1, lowercaseMessags.Items.Count);
+            Assert.Equal(1, lowercaseMessags.Totals);
+
+            Assert.Equal(1, uppercaseMessags.Items.Count);
+            Assert.Equal(1, uppercaseMessags.Totals);
         }
 
         private long _publishedMessageId;

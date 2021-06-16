@@ -95,7 +95,7 @@ namespace DotNetCore.CAP.Sqlite
                 GetHourlyTimelineStats(connection, tableName, nameof(StatusName.Succeeded)));
         }
 
-        public IList<MessageDto> Messages(MessageQueryDto queryDto)
+        public PagedQueryResult<MessageDto> Messages(MessageQueryDto queryDto)
         {
             var tableName = queryDto.MessageType == MessageType.Publish ? _published : _received;
             var where = string.Empty;
@@ -119,10 +119,7 @@ namespace DotNetCore.CAP.Sqlite
                 where += " and `Content` like @Content";
             }
 
-            var sqlQuery =
-                $"select * from `{tableName}` where 1=1 {where} order by `Added` desc limit @Offset,@Limit";
-
-            return UseConnection(conn => conn.Query<MessageDto>(sqlQuery, new
+            var sqlParams = new
             {
                 queryDto.StatusName,
                 queryDto.Group,
@@ -130,7 +127,24 @@ namespace DotNetCore.CAP.Sqlite
                 Content = $"%{queryDto.Content}%",//参数化Like查询的一个错误
                 Offset = queryDto.CurrentPage * queryDto.PageSize,
                 Limit = queryDto.PageSize
-            }).ToList());
+            };
+
+            var sqlQuery =
+                $"select * from `{tableName}` where 1=1 {where} order by `Added` desc limit @Offset,@Limit";
+
+            var count = UseConnection(conn => conn.QueryFirst<int>(
+                $"select count(1) from `{tableName}` where 1=1 {where}",
+                sqlParams));
+
+            var messages = UseConnection(conn => conn.Query<MessageDto>(sqlQuery, sqlParams).ToList());
+
+            return new PagedQueryResult<MessageDto>
+            {
+                Items = messages,
+                PageIndex = queryDto.CurrentPage,
+                PageSize = queryDto.PageSize,
+                Totals = count
+            };
         }
 
         public int PublishedFailedCount()
