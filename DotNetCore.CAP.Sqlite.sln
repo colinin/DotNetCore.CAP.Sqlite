@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.29324.140
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31919.166
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DotNetCore.CAP.Sqlite", "src\DotNetCore.CAP.Sqlite\DotNetCore.CAP.Sqlite.csproj", "{D49CA8AD-7C76-486C-9AC0-4B6567BF24C1}"
 EndProject
@@ -10,6 +10,13 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{814927CB-3ED4-41A5-AFEA-B5984E108FBF}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DotNetCore.CAP.Sqlite.Test", "test\DotNetCore.CAP.SqliteTests\DotNetCore.CAP.Sqlite.Test.csproj", "{9F917606-E716-4E9B-8128-F1843B7B5A48}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{173359D0-FCD7-4989-8F6B-9B3EDFE4F7CE}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflow", "workflow", "{EEDA2460-224B-4A4C-B015-08281A98B229}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\dotnet-core.yml = .github\workflows\dotnet-core.yml
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -32,6 +39,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{D49CA8AD-7C76-486C-9AC0-4B6567BF24C1} = {4A1D2C90-FDAA-483E-B53B-106BD3298C75}
 		{9F917606-E716-4E9B-8128-F1843B7B5A48} = {814927CB-3ED4-41A5-AFEA-B5984E108FBF}
+		{EEDA2460-224B-4A4C-B015-08281A98B229} = {173359D0-FCD7-4989-8F6B-9B3EDFE4F7CE}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CA0BA1E-2B0E-45A5-9B37-66A4DA01EBF8}
