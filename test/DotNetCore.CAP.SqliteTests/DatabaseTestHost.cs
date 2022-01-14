@@ -1,4 +1,5 @@
-﻿using DotNetCore.CAP.Persistence;
+﻿using Dapper;
+using DotNetCore.CAP.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -72,9 +73,15 @@ namespace DotNetCore.CAP.Sqlite.Test
 
         private void DeleteAllData()
         {
+            var sqliteConn = ConnectionUtil.GetConnectionString(DataBaseName);
             if (File.Exists(DataBaseName))
             {
-                File.Delete(DataBaseName);
+                using (var connection = ConnectionUtil.CreateConnection(sqliteConn))
+                {
+                    connection.Execute($@"
+DELETE FROM `cap.published`;
+DELETE FROM `cap.received`;");
+                }
             }
         }
     }

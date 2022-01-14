@@ -210,11 +210,16 @@ namespace DotNetCore.CAP.Sqlite
             from  `{tableName}`
             where `StatusName` = @statusName
             group by strftime('%Y-%m-%d-%H', `Added`)
-        ) as aggr where aggr.`Key` in @keys;";
+        ) as aggr where aggr.`Key` >= @minKey and aggr.`Key` <= @maxKey;;";
 
             var valuesMap = connection.Query<TimelineCounter>(
                     sqlQuery,
-                    new { keys = keyMaps.Keys, statusName })
+                    new 
+                    {
+                        minKey = keyMaps.Keys.Min(),
+                        maxKey = keyMaps.Keys.Max(),
+                        statusName,
+                    })
                 .ToDictionary(x => x.Key, x => x.Count);
 
             foreach (var key in keyMaps.Keys)
