@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
-	  <Version>6.2.1</Version>
+	  <Version>7.0.0</Version>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 

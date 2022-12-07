@@ -33,7 +33,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
 
         public async Task CommitAsync(CancellationToken cancellationToken = default)
         {
-            await _transaction.CommitAsync();
+            await _transaction.CommitAsync(cancellationToken);
         }
 
         public void Rollback()
@@ -43,7 +43,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
 
         public async Task RollbackAsync(CancellationToken cancellationToken = default)
         {
-            await _transaction.RollbackAsync();
+            await _transaction.RollbackAsync(cancellationToken);
         }
 
         public ValueTask DisposeAsync()

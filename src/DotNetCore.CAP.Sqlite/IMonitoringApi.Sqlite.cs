@@ -10,7 +10,6 @@ using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -32,27 +31,23 @@ namespace DotNetCore.CAP.Sqlite
             _received = initializer.GetReceivedTableName();
         }
 
-        public async Task<MediumMessage> GetPublishedMessageAsync(long id)
+        public async virtual Task<MediumMessage> GetPublishedMessageAsync(long id)
         {
             var sql = $@"SELECT `Id` as DbId, `Content`,`Added`,`ExpiresAt`,`Retries` FROM `{_published}` WHERE `Id`=@Id;";
             var sqlParam = new { Id = id };
-            using (var connection = new SqliteConnection(_options.Value.ConnectionString))
-            {
-                return await connection.QueryFirstOrDefaultAsync<MediumMessage>(sql, sqlParam);
-            }
+            await using var connection = new SqliteConnection(_options.Value.ConnectionString);
+            return await connection.QueryFirstOrDefaultAsync<MediumMessage>(sql, sqlParam);
         }
 
-        public async Task<MediumMessage> GetReceivedMessageAsync(long id)
+        public async virtual Task<MediumMessage> GetReceivedMessageAsync(long id)
         {
             var sql = $@"SELECT `Id` as DbId, `Content`,`Added`,`ExpiresAt`,`Retries` FROM `{_received}` WHERE Id=@Id;";
             var sqlParam = new { Id = id };
-            using (var connection = new SqliteConnection(_options.Value.ConnectionString))
-            {
-                return await connection.QueryFirstOrDefaultAsync<MediumMessage>(sql, sqlParam);
-            }
+            await using var connection = new SqliteConnection(_options.Value.ConnectionString);
+            return await connection.QueryFirstOrDefaultAsync<MediumMessage>(sql, sqlParam);
         }
 
-        public StatisticsDto GetStatistics()
+        public async virtual Task<StatisticsDto> GetStatisticsAsync()
         {
             var sqlBuilder = new StringBuilder();
             sqlBuilder.AppendLine("PRAGMA read_uncommitted = 1;")
@@ -64,38 +59,36 @@ namespace DotNetCore.CAP.Sqlite
                 .AppendLine()
                 .AppendFormat("select count(`Id`) from `{0}` where `StatusName` = 'Failed';", _received);
 
-            var statistics = UseConnection(connection =>
+            await using var connection = new SqliteConnection(_options.Value.ConnectionString);
+
+            var multi = await connection.QueryMultipleAsync(sqlBuilder.ToString());
+
+            var statistics = new StatisticsDto
             {
-                var stats = new StatisticsDto();
-                using (var multi = connection.QueryMultiple(sqlBuilder.ToString()))
-                {
-                    stats.PublishedSucceeded = multi.ReadSingle<int>();
-                    stats.ReceivedSucceeded = multi.ReadSingle<int>();
+                PublishedSucceeded = multi.ReadSingle<int>(),
+                ReceivedSucceeded = multi.ReadSingle<int>(),
 
-                    stats.PublishedFailed = multi.ReadSingle<int>();
-                    stats.ReceivedFailed = multi.ReadSingle<int>();
-                }
+                PublishedFailed = multi.ReadSingle<int>(),
+                ReceivedFailed = multi.ReadSingle<int>()
+            };
 
-                return stats;
-            });
             return statistics;
         }
 
-        public IDictionary<DateTime, int> HourlyFailedJobs(MessageType type)
+        public async virtual Task<IDictionary<DateTime, int>> HourlyFailedJobs(MessageType type)
         {
             var tableName = type == MessageType.Publish ? _published : _received;
-            return UseConnection(connection =>
-                GetHourlyTimelineStats(connection, tableName, nameof(StatusName.Failed)));
+
+            return await GetHourlyTimelineStats(tableName, nameof(StatusName.Failed));
         }
 
-        public IDictionary<DateTime, int> HourlySucceededJobs(MessageType type)
+        public async virtual Task<IDictionary<DateTime, int>> HourlySucceededJobs(MessageType type)
         {
             var tableName = type == MessageType.Publish ? _published : _received;
-            return UseConnection(connection =>
-                GetHourlyTimelineStats(connection, tableName, nameof(StatusName.Succeeded)));
+            return await GetHourlyTimelineStats(tableName, nameof(StatusName.Succeeded));
         }
 
-        public PagedQueryResult<MessageDto> Messages(MessageQueryDto queryDto)
+        public async virtual Task<PagedQueryResult<MessageDto>> GetMessagesAsync(MessageQueryDto queryDto)
         {
             var tableName = queryDto.MessageType == MessageType.Publish ? _published : _received;
             var where = string.Empty;
@@ -132,11 +125,13 @@ namespace DotNetCore.CAP.Sqlite
             var sqlQuery =
                 $"select * from `{tableName}` where 1=1 {where} order by `Added` desc limit @Offset,@Limit";
 
-            var count = UseConnection(conn => conn.QueryFirst<int>(
-                $"select count(1) from `{tableName}` where 1=1 {where}",
-                sqlParams));
+            await using var connection = new SqliteConnection(_options.Value.ConnectionString);
 
-            var messages = UseConnection(conn => conn.Query<MessageDto>(sqlQuery, sqlParams).ToList());
+            var count = await connection.QueryFirstAsync<int>(
+                $"select count(1) from `{tableName}` where 1 = 1 {where}",
+                sqlParams);
+
+            var messages = (await connection.QueryAsync<MessageDto>(sqlQuery, sqlParams)).ToList();
 
             return new PagedQueryResult<MessageDto>
             {
@@ -147,41 +142,37 @@ namespace DotNetCore.CAP.Sqlite
             };
         }
 
-        public int PublishedFailedCount()
+        public virtual ValueTask<int> PublishedFailedCount()
         {
-            return UseConnection(conn => GetNumberOfMessage(conn, _published, nameof(StatusName.Failed)));
+            return GetNumberOfMessage(_published, nameof(StatusName.Failed));
         }
 
-        public int PublishedSucceededCount()
+        public virtual ValueTask<int> PublishedSucceededCount()
         {
-            return UseConnection(conn => GetNumberOfMessage(conn, _published, nameof(StatusName.Succeeded)));
+            return GetNumberOfMessage(_published, nameof(StatusName.Succeeded));
         }
 
-        public int ReceivedFailedCount()
+        public virtual ValueTask<int> ReceivedFailedCount()
         {
-            return UseConnection(conn => GetNumberOfMessage(conn, _received, nameof(StatusName.Failed)));
+            return GetNumberOfMessage(_received, nameof(StatusName.Failed));
         }
 
-        public int ReceivedSucceededCount()
+        public virtual ValueTask<int> ReceivedSucceededCount()
         {
-            return UseConnection(conn => GetNumberOfMessage(conn, _received, nameof(StatusName.Succeeded)));
+            return GetNumberOfMessage(_received, nameof(StatusName.Succeeded));
         }
 
-        private int GetNumberOfMessage(IDbConnection connection, string tableName, string statusName)
+        private async ValueTask<int> GetNumberOfMessage(string tableName, string statusName)
         {
             var sqlQuery = $"select count(`Id`) from `{tableName}` where `StatusName` = @state";
 
-            var count = connection.ExecuteScalar<int>(sqlQuery, new { state = statusName });
+            await using var connection = new SqliteConnection(_options.Value.ConnectionString);
+
+            var count = await connection.ExecuteScalarAsync<int>(sqlQuery, new { state = statusName });
             return count;
         }
 
-        private T UseConnection<T>(Func<IDbConnection, T> action)
-        {
-            return action(new SqliteConnection(_options.Value.ConnectionString));
-        }
-
-        private Dictionary<DateTime, int> GetHourlyTimelineStats(IDbConnection connection, string tableName,
-            string statusName)
+        private Task<Dictionary<DateTime, int>> GetHourlyTimelineStats(string tableName, string statusName)
         {
             var endDate = DateTime.Now;
             var dates = new List<DateTime>();
@@ -193,11 +184,10 @@ namespace DotNetCore.CAP.Sqlite
 
             var keyMaps = dates.ToDictionary(x => x.ToString("yyyy-MM-dd-HH"), x => x);
 
-            return GetTimelineStats(connection, tableName, statusName, keyMaps);
+            return GetTimelineStats(tableName, statusName, keyMaps);
         }
 
-        private Dictionary<DateTime, int> GetTimelineStats(
-            IDbConnection connection,
+        private async Task<Dictionary<DateTime, int>> GetTimelineStats(
             string tableName,
             string statusName,
             IDictionary<string, DateTime> keyMaps)
@@ -212,32 +202,35 @@ namespace DotNetCore.CAP.Sqlite
             group by strftime('%Y-%m-%d-%H', `Added`)
         ) as aggr where aggr.`Key` >= @minKey and aggr.`Key` <= @maxKey;;";
 
-            var valuesMap = connection.Query<TimelineCounter>(
+            await using var connection = new SqliteConnection(_options.Value.ConnectionString);
+            {
+                var valuesMap = (await connection.QueryAsync<TimelineCounter>(
                     sqlQuery,
-                    new 
+                    new
                     {
                         minKey = keyMaps.Keys.Min(),
                         maxKey = keyMaps.Keys.Max(),
                         statusName,
-                    })
-                .ToDictionary(x => x.Key, x => x.Count);
+                    })).ToDictionary(x => x.Key, x => x.Count);
 
-            foreach (var key in keyMaps.Keys)
-            {
-                if (!valuesMap.ContainsKey(key))
+
+                foreach (var key in keyMaps.Keys)
                 {
-                    valuesMap.Add(key, 0);
+                    if (!valuesMap.ContainsKey(key))
+                    {
+                        valuesMap.Add(key, 0);
+                    }
                 }
-            }
 
-            var result = new Dictionary<DateTime, int>();
-            for (var i = 0; i < keyMaps.Count; i++)
-            {
-                var value = valuesMap[keyMaps.ElementAt(i).Key];
-                result.Add(keyMaps.ElementAt(i).Value, value);
-            }
+                var result = new Dictionary<DateTime, int>();
+                for (var i = 0; i < keyMaps.Count; i++)
+                {
+                    var value = valuesMap[keyMaps.ElementAt(i).Key];
+                    result.Add(keyMaps.ElementAt(i).Value, value);
+                }
 
-            return result;
+                return result;
+            }
         }
 
         class TimelineCounter

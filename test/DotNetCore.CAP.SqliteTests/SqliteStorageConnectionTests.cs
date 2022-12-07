@@ -5,6 +5,7 @@ using DotNetCore.CAP.Serialization;
 using DotNetCore.CAP.Sqlite.Test;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -24,7 +25,7 @@ namespace DotNetCore.CAP.Sqlite.Tests
         }
 
         [Fact]
-        public void Storage_Message_Test()
+        public async Task Storage_Message_Test()
         {
             var msgId = SnowflakeId.Default().NextId().ToString();
             var header = new Dictionary<string, string>()
@@ -33,12 +34,12 @@ namespace DotNetCore.CAP.Sqlite.Tests
             };
             var message = new Message(header, null);
 
-            var mdMessage = _storage.StoreMessage("test.name", message);
+            var mdMessage = await _storage.StoreMessageAsync("test.name", message);
             Assert.NotNull(mdMessage);
         }
 
         [Fact]
-        public void Store_Received_Message_Test()
+        public async Task Change_Publish_State_To_Delayed()
         {
             var msgId = SnowflakeId.Default().NextId().ToString();
             var header = new Dictionary<string, string>()
@@ -47,14 +48,54 @@ namespace DotNetCore.CAP.Sqlite.Tests
             };
             var message = new Message(header, null);
 
-            var mdMessage = _storage.StoreReceivedMessage("test.name", "test.group", message);
+            var mdMessage = await _storage.StoreMessageAsync("test.delayed", message);
+
+            await _storage.ChangePublishStateToDelayedAsync(new[] { mdMessage.DbId } );
+
+            var messages = await _storage.GetPublishedMessagesOfNeedRetry();
+            Assert.Empty(messages);
+        }
+
+        [Fact]
+        public async Task Schedule_Messages_Of_Delayed()
+        {
+            var msgId = SnowflakeId.Default().NextId().ToString();
+            var header = new Dictionary<string, string>()
+            {
+                [Headers.MessageId] = msgId
+            };
+            var message = new Message(header, null);
+
+            var mdMessage = await _storage.StoreMessageAsync("test.delayed", message);
+            mdMessage.ExpiresAt = DateTime.Now.AddMilliseconds(1);
+            await _storage.ChangePublishStateAsync(mdMessage, StatusName.Delayed);
+            await _storage.ScheduleMessagesOfDelayedAsync(
+                async (tran, messages) =>
+                {
+                    await Task.CompletedTask;
+
+                    Assert.Single(messages);
+                });
+        }
+
+        [Fact]
+        public async Task Store_Received_Message_Test()
+        {
+            var msgId = SnowflakeId.Default().NextId().ToString();
+            var header = new Dictionary<string, string>()
+            {
+                [Headers.MessageId] = msgId
+            };
+            var message = new Message(header, null);
+
+            var mdMessage = await _storage.StoreReceivedMessageAsync("test.name", "test.group", message);
             Assert.NotNull(mdMessage);
         }
 
         [Fact]
-        public void Store_Received_Exception_Message_Test()
+        public async Task Store_Received_Exception_Message_Test()
         {
-            _storage.StoreReceivedExceptionMessage("test.name", "test.group", "");
+            await _storage.StoreReceivedExceptionMessageAsync("test.name", "test.group", "");
         }
 
         [Fact]
@@ -67,7 +108,7 @@ namespace DotNetCore.CAP.Sqlite.Tests
             };
             var message = new Message(header, null);
 
-            var mdMessage = _storage.StoreMessage("test.name", message);
+            var mdMessage = await _storage.StoreMessageAsync("test.name", message);
 
             await _storage.ChangePublishStateAsync(mdMessage, StatusName.Succeeded);
         }
@@ -82,7 +123,7 @@ namespace DotNetCore.CAP.Sqlite.Tests
             };
             var message = new Message(header, null);
 
-            var mdMessage = _storage.StoreMessage("test.name", message);
+            var mdMessage = await _storage.StoreMessageAsync("test.name", message);
 
             await _storage.ChangeReceiveStateAsync(mdMessage, StatusName.Succeeded);
         }
@@ -97,7 +138,7 @@ namespace DotNetCore.CAP.Sqlite.Tests
             };
             var message = new Message(header, null);
 
-            _storage.StoreMessage("test.name", message);
+            await _storage.StoreMessageAsync("test.name", message);
 
             var needRetryMessags = await _storage.GetPublishedMessagesOfNeedRetry();
             Assert.Single(needRetryMessags);
@@ -113,7 +154,7 @@ namespace DotNetCore.CAP.Sqlite.Tests
             };
             var message = new Message(header, null);
 
-            _storage.StoreReceivedMessage("test.name", "test.group", message);
+            await _storage.StoreReceivedMessageAsync("test.name", "test.group", message);
 
             var needRetryMessags = await _storage.GetReceivedMessagesOfNeedRetry();
             Assert.Single(needRetryMessags);
@@ -129,9 +170,9 @@ namespace DotNetCore.CAP.Sqlite.Tests
             };
             var message = new Message(header, null);
 
-            var publishMessage = _storage.StoreMessage("test.name", message);
+            var publishMessage = await _storage.StoreMessageAsync("test.name", message);
             publishMessage.ExpiresAt = DateTime.Now.AddMilliseconds(-2000);
-            var receivedMessage = _storage.StoreReceivedMessage("test.name", "test.group", message);
+            var receivedMessage = await _storage.StoreReceivedMessageAsync("test.name", "test.group", message);
             receivedMessage.ExpiresAt = DateTime.Now.AddMilliseconds(-2000);
 
             await _storage.ChangePublishStateAsync(publishMessage, StatusName.Succeeded);

@@ -33,14 +33,14 @@ namespace DotNetCore.CAP.Sqlite
             return $"{_tablePrefix}.Received";
         }
 
-        public async Task InitializeAsync(CancellationToken cancellationToken)
+        public async virtual Task InitializeAsync(CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested)
             {
                 return;
             }
             var sql = CreateDbTablesScript();
-            using (var connection = new SqliteConnection(_options.Value.ConnectionString))
+            await using (var connection = new SqliteConnection(_options.Value.ConnectionString))
             {
                 await connection.ExecuteAsync(sql);
             }

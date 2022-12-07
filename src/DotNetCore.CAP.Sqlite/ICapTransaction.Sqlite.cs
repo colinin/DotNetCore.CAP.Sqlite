@@ -48,7 +48,7 @@ namespace DotNetCore.CAP
                     dbTransaction.Commit();
                     break;
                 case IDbContextTransaction dbContextTransaction:
-                    await dbContextTransaction.CommitAsync();
+                    await dbContextTransaction.CommitAsync(cancellationToken);
                     break;
             }
             Flush();
@@ -80,7 +80,7 @@ namespace DotNetCore.CAP
                     dbTransaction.Rollback();
                     break;
                 case IDbContextTransaction dbContextTransaction:
-                    await dbContextTransaction.RollbackAsync();
+                    await dbContextTransaction.RollbackAsync(cancellationToken);
                     break;
             }
         }

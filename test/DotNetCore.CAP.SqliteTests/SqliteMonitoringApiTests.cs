@@ -28,26 +28,26 @@ namespace DotNetCore.CAP.Sqlite.Test
         private void Initialize(IDataStorage storage)
         {
             _publishedMessageId = SnowflakeId.Default().NextId();
-            var publishMessage = storage.StoreMessage("test.publish.message", new Message(
+            var publishMessage = storage.StoreMessageAsync("test.publish.message", new Message(
                 new Dictionary<string, string>()
                 {
                     [Headers.MessageId] = _publishedMessageId.ToString(),
                     ["test-header"] = "test-value"
-                }, null));
+                }, null)).GetAwaiter().GetResult();
             storage.ChangePublishStateAsync(publishMessage, Internal.StatusName.Succeeded);
             
-            var receivedMessage = storage.StoreReceivedMessage("test.received.message", "test.group", new Message(
+            var receivedMessage = storage.StoreReceivedMessageAsync("test.received.message", "test.group", new Message(
                 new Dictionary<string, string>()
                 {
                     [Headers.MessageId] = SnowflakeId.Default().NextId().ToString(),
                     ["test-header"] = "test-value"
-                }, null));
+                }, null)).GetAwaiter().GetResult();
             _receivedMessageId = long.Parse(receivedMessage.DbId);
             storage.ChangeReceiveStateAsync(receivedMessage, Internal.StatusName.Failed);
         }
 
         [Fact]
-        public void Messages_Test()
+        public async Task Messages_Test()
         {
             var normalMessageDto = new MessageQueryDto
             {
@@ -56,7 +56,7 @@ namespace DotNetCore.CAP.Sqlite.Test
                 CurrentPage = 0,
                 PageSize = 10
             };
-            var normalMessags = _monitoring.Messages(normalMessageDto);
+            var normalMessags = await _monitoring.GetMessagesAsync(normalMessageDto);
 
             var lowercaseMessageDto = new MessageQueryDto
             {
@@ -65,7 +65,7 @@ namespace DotNetCore.CAP.Sqlite.Test
                 CurrentPage = 0,
                 PageSize = 10
             };
-            var lowercaseMessags = _monitoring.Messages(lowercaseMessageDto);
+            var lowercaseMessags = await _monitoring.GetMessagesAsync(lowercaseMessageDto);
 
             var uppercaseMessageDto = new MessageQueryDto
             {
@@ -74,7 +74,7 @@ namespace DotNetCore.CAP.Sqlite.Test
                 CurrentPage = 0,
                 PageSize = 10
             };
-            var uppercaseMessags = _monitoring.Messages(uppercaseMessageDto);
+            var uppercaseMessags = await _monitoring.GetMessagesAsync(uppercaseMessageDto);
 
             Assert.Equal(1, normalMessags.Items.Count);
             Assert.Equal(1, normalMessags.Totals);
@@ -110,9 +110,9 @@ namespace DotNetCore.CAP.Sqlite.Test
         }
 
         [Fact]
-        public void Get_Statistics_Test()
+        public async Task Get_Statistics_Test()
         {
-            var statistice = _monitoring.GetStatistics();
+            var statistice = await _monitoring.GetStatisticsAsync();
             Assert.Equal(1, statistice.PublishedSucceeded);
             Assert.Equal(0, statistice.PublishedFailed);
             Assert.Equal(0, statistice.ReceivedSucceeded);
@@ -120,48 +120,48 @@ namespace DotNetCore.CAP.Sqlite.Test
         }
 
         [Fact]
-        public void Published_Failed_Count_Test()
+        public async Task Published_Failed_Count_Test()
         {
-            var publishedFailedCount = _monitoring.PublishedFailedCount();
+            var publishedFailedCount = await _monitoring.PublishedFailedCount();
             Assert.Equal(0, publishedFailedCount);
         }
 
         [Fact]
-        public void Published_Succeeded_Count_Test()
+        public async Task Published_Succeeded_Count_Test()
         {
-            var publishedSucceededCount = _monitoring.PublishedSucceededCount();
+            var publishedSucceededCount = await _monitoring.PublishedSucceededCount();
             Assert.Equal(1, publishedSucceededCount);
         }
 
         [Fact]
-        public void Received_Failed_Count_Test()
+        public async Task Received_Failed_Count_Test()
         {
-            var receivedFailedCount = _monitoring.ReceivedFailedCount();
+            var receivedFailedCount = await _monitoring.ReceivedFailedCount();
             Assert.Equal(1, receivedFailedCount);
         }
 
         [Fact]
-        public void Received_Succeeded_Count_Test()
+        public async Task Received_Succeeded_Count_Test()
         {
-            var receivedSucceededCount = _monitoring.ReceivedSucceededCount();
+            var receivedSucceededCount = await _monitoring.ReceivedSucceededCount();
             Assert.Equal(0, receivedSucceededCount);
         }
 
         [Fact]
-        public void Hourly_Failed_Jobs_Test()
+        public async Task Hourly_Failed_Jobs_Test()
         {
-            var failedPublishJobs = _monitoring.HourlyFailedJobs(MessageType.Publish);
-            var failedReceivedJobs = _monitoring.HourlyFailedJobs(MessageType.Subscribe);
+            var failedPublishJobs = await _monitoring.HourlyFailedJobs(MessageType.Publish);
+            var failedReceivedJobs = await _monitoring.HourlyFailedJobs(MessageType.Subscribe);
 
             Assert.Equal(0, failedPublishJobs.Values.Sum());
             Assert.Equal(1, failedReceivedJobs.Values.Sum());
         }
 
         [Fact]
-        public void Hourly_Succeeded_Jobs_Test()
+        public async Task Hourly_Succeeded_Jobs_Test()
         {
-            var successedPublishJobs = _monitoring.HourlySucceededJobs(MessageType.Publish);
-            var successedReceivedJobs = _monitoring.HourlySucceededJobs(MessageType.Subscribe);
+            var successedPublishJobs = await _monitoring.HourlySucceededJobs(MessageType.Publish);
+            var successedReceivedJobs = await _monitoring.HourlySucceededJobs(MessageType.Subscribe);
 
             Assert.Equal(0, successedReceivedJobs.Values.Sum());
             Assert.Equal(1, successedPublishJobs.Values.Sum());
