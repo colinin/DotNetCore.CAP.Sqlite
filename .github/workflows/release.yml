@@ -1,0 +1,16 @@
+name: "Tagged Release"
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  tagged-release:
+    name: "Tagged Release"
+    runs-on: "ubuntu-latest"
+    steps:
+    - uses: "marvinpinto/action-automatic-releases@latest"
+    - name: "Auto release"
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        automatic_release_tag: "7.0.2"
