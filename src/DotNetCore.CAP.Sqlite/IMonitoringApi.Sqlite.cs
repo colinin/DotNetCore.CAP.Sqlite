@@ -6,6 +6,7 @@ using DotNetCore.CAP.Internal;
 using DotNetCore.CAP.Messages;
 using DotNetCore.CAP.Monitoring;
 using DotNetCore.CAP.Persistence;
+using DotNetCore.CAP.Serialization;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Options;
 using System;
@@ -21,30 +22,27 @@ namespace DotNetCore.CAP.Sqlite
         private readonly IOptions<SqliteOptions> _options;
         private readonly string _published;
         private readonly string _received;
+        private readonly ISerializer _serializer;
 
         public SqliteMonitoringApi(
             IOptions<SqliteOptions> options, 
-            IStorageInitializer initializer)
+            IStorageInitializer initializer,
+            ISerializer serializer)
         {
             _options = options;
             _published = initializer.GetPublishedTableName();
             _received = initializer.GetReceivedTableName();
+            _serializer = serializer;
         }
 
         public async virtual Task<MediumMessage> GetPublishedMessageAsync(long id)
         {
-            var sql = $@"SELECT `Id` as DbId, `Content`,`Added`,`ExpiresAt`,`Retries` FROM `{_published}` WHERE `Id`=@Id;";
-            var sqlParam = new { Id = id };
-            await using var connection = new SqliteConnection(_options.Value.ConnectionString);
-            return await connection.QueryFirstOrDefaultAsync<MediumMessage>(sql, sqlParam);
+            return await GetMessageAsync(_published, id);
         }
 
         public async virtual Task<MediumMessage> GetReceivedMessageAsync(long id)
         {
-            var sql = $@"SELECT `Id` as DbId, `Content`,`Added`,`ExpiresAt`,`Retries` FROM `{_received}` WHERE Id=@Id;";
-            var sqlParam = new { Id = id };
-            await using var connection = new SqliteConnection(_options.Value.ConnectionString);
-            return await connection.QueryFirstOrDefaultAsync<MediumMessage>(sql, sqlParam);
+            return await GetMessageAsync(_received, id);
         }
 
         public async virtual Task<StatisticsDto> GetStatisticsAsync()
@@ -160,6 +158,22 @@ namespace DotNetCore.CAP.Sqlite
         public virtual ValueTask<int> ReceivedSucceededCount()
         {
             return GetNumberOfMessage(_received, nameof(StatusName.Succeeded));
+        }
+
+        private async Task<MediumMessage> GetMessageAsync(string tableName, long id)
+        {
+            var sql = $@"SELECT `Id` as DbId, `Content`,`Added`,`ExpiresAt`,`Retries` FROM `{tableName}` WHERE `Id`=@Id;";
+            var sqlParam = new { Id = id }; 
+            await using var connection = new SqliteConnection(_options.Value.ConnectionString);
+
+            var message = await connection.QueryFirstOrDefaultAsync<MediumMessage>(sql, sqlParam);
+
+            if (!string.IsNullOrWhiteSpace(message.Content))
+            {
+                message.Origin = _serializer.Deserialize(message.Content);
+            }
+
+            return message;
         }
 
         private async ValueTask<int> GetNumberOfMessage(string tableName, string statusName)

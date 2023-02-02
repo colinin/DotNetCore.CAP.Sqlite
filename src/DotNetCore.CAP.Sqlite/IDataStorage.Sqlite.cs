@@ -211,7 +211,7 @@ namespace DotNetCore.CAP.Sqlite
 
         IMonitoringApi IDataStorage.GetMonitoringApi()
         {
-            return new SqliteMonitoringApi(_options, _initializer);
+            return new SqliteMonitoringApi(_options, _initializer, _serializer);
         }
 
         protected async virtual Task StoreReceivedMessageAsync(object sqlParam)
@@ -255,7 +255,7 @@ namespace DotNetCore.CAP.Sqlite
             var result = new List<MediumMessage>();
             await using var connection = new SqliteConnection(_options.Value.ConnectionString);
             using var reader = await connection.ExecuteReaderAsync(sql, sqlParam);
-            while (reader.Read())
+            while (await reader.ReadAsync())
             {
                 var mediumMessage = new MediumMessage
                 {
