@@ -21,7 +21,7 @@ namespace DotNetCore.CAP
 
         public void AddServices(IServiceCollection services)
         {
-            services.AddSingleton<CapStorageMarkerService>();
+            services.AddSingleton(new CapStorageMarkerService("Sqlite"));
 
             services.AddSingleton<IDataStorage, SqliteDataStorage>();
             services.AddSingleton<IStorageInitializer, SqliteStorageInitializer>();
