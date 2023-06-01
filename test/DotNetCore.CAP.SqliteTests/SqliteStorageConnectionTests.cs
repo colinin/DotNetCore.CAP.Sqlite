@@ -25,6 +25,45 @@ namespace DotNetCore.CAP.Sqlite.Tests
         }
 
         [Fact]
+        public async Task Storage_Lock_Test()
+        {
+            var lockKey = "publish_retry_v1";
+            var instance = "test_instance";
+            
+            var lockFirst = await _storage.AcquireLockAsync(lockKey, TimeSpan.FromSeconds(5), instance);
+            Assert.True(lockFirst);
+
+            var lockTwo = await _storage.AcquireLockAsync(lockKey, TimeSpan.FromSeconds(5), instance);
+            Assert.False(lockTwo);
+
+            await Task.Delay(5000);
+
+            var lockTree = await _storage.AcquireLockAsync(lockKey, TimeSpan.FromSeconds(5), instance);
+            Assert.True(lockTree);
+
+            await _storage.ReleaseLockAsync(lockKey, instance);
+        }
+
+        [Fact]
+        public async Task Storage_New_Lock_Test()
+        {
+            var lockKey = "publish_retry_v1";
+            var instance = "test_instance";
+
+            var lockFirst = await _storage.AcquireLockAsync(lockKey, TimeSpan.FromSeconds(5), instance);
+            Assert.True(lockFirst);
+
+            await Task.Delay(5000);
+
+            await _storage.RenewLockAsync(lockKey, TimeSpan.FromSeconds(5), instance);
+
+            var lockTwo = await _storage.AcquireLockAsync(lockKey, TimeSpan.FromSeconds(5), instance);
+            Assert.False(lockTwo);
+
+            await _storage.ReleaseLockAsync(lockKey, instance);
+        }
+
+        [Fact]
         public async Task Storage_Message_Test()
         {
             var msgId = SnowflakeId.Default().NextId().ToString();

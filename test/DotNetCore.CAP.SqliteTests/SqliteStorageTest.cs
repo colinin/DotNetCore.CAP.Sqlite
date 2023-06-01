@@ -25,6 +25,7 @@ namespace DotNetCore.CAP.Sqlite.Test
         [Theory]
         [InlineData("cap.Published")]
         [InlineData("cap.Received")]
+        [InlineData("cap.Locks")]
         public void DatabaseTable_IsExists(string tableName)
         {
             using (var connection = ConnectionUtil.CreateConnection(_dbConnectionString))
