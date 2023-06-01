@@ -26,6 +26,7 @@ namespace DotNetCore.CAP.Sqlite.Test
             _services.AddLogging();
             _services.AddCap(options =>
             {
+                options.UseStorageLock = true;
                 options.UseSqlite(ConnectionUtil.GetConnectionString(DataBaseName));
             });
 

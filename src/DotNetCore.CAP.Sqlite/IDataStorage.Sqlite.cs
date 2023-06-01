@@ -8,6 +8,7 @@ using DotNetCore.CAP.Monitoring;
 using DotNetCore.CAP.Persistence;
 using DotNetCore.CAP.Serialization;
 using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Options;
 using System;
@@ -37,6 +38,57 @@ namespace DotNetCore.CAP.Sqlite
             _serializer = serializer;
             _initializer = initializer;
         }
+
+        #region 7.1.1
+
+        public async virtual Task<bool> AcquireLockAsync(string key, TimeSpan ttl, string instance, CancellationToken token = default)
+        {
+            string sql = $"UPDATE `{_initializer.GetLockTableName()}` SET `Instance` = @Instance,`LastLockTime` = @LastLockTime WHERE `Key` = @Key AND `LastLockTime` < @TTL;";
+
+            var sqlParam = new
+            {
+                Instance = instance,
+                LastLockTime = DateTime.Now,
+                Key = key,
+                TTL = DateTime.Now.Subtract(ttl),
+            };
+
+            await using var connection = new SqliteConnection(_options.Value.ConnectionString);
+            var opResult = await connection.ExecuteAsync(sql, sqlParam);
+
+            return opResult > 0;
+        }
+
+        public async virtual Task ReleaseLockAsync(string key, string instance, CancellationToken token = default)
+        {
+            string sql = $"UPDATE `{_initializer.GetLockTableName()}` SET `Instance` = '',`LastLockTime` = @LastLockTime WHERE `Key` = @Key AND `Instance` = @Instance;";
+
+            var sqlParam = new
+            {
+                Instance = instance,
+                LastLockTime = DateTime.MinValue,
+                Key = key,
+            };
+
+            await using var connection = new SqliteConnection(_options.Value.ConnectionString);
+            await connection.ExecuteAsync(sql, sqlParam);
+        }
+
+        public async virtual Task RenewLockAsync(string key, TimeSpan ttl, string instance, CancellationToken token = default)
+        {
+            var sql = $"UPDATE `{_initializer.GetLockTableName()}` SET `LastLockTime` = datetime(`LastLockTime`, '+{ttl.TotalSeconds} seconds') WHERE `Key` = @Key AND `Instance` = @Instance;";
+
+            var sqlParam = new
+            {
+                Instance = instance,
+                Key = key,
+            };
+
+            await using var connection = new SqliteConnection(_options.Value.ConnectionString);
+            await connection.ExecuteAsync(sql, sqlParam);
+        }
+
+        #endregion
 
         public async Task ChangePublishStateToDelayedAsync(string[] ids)
         {
