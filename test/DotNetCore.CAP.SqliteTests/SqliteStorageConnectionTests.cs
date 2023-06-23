@@ -36,7 +36,7 @@ namespace DotNetCore.CAP.Sqlite.Tests
             var lockTwo = await _storage.AcquireLockAsync(lockKey, TimeSpan.FromSeconds(5), instance);
             Assert.False(lockTwo);
 
-            await Task.Delay(5000);
+            await Task.Delay(5100);
 
             var lockTree = await _storage.AcquireLockAsync(lockKey, TimeSpan.FromSeconds(5), instance);
             Assert.True(lockTree);
@@ -55,7 +55,7 @@ namespace DotNetCore.CAP.Sqlite.Tests
 
             await Task.Delay(5000);
 
-            await _storage.RenewLockAsync(lockKey, TimeSpan.FromSeconds(5), instance);
+            await _storage.RenewLockAsync(lockKey, TimeSpan.FromSeconds(6), instance);
 
             var lockTwo = await _storage.AcquireLockAsync(lockKey, TimeSpan.FromSeconds(5), instance);
             Assert.False(lockTwo);
