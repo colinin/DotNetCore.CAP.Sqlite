@@ -16,10 +16,12 @@ namespace DotNetCore.CAP.Sqlite.Test
         protected override string DataBaseName => @".\DotNetCore.CAP.Sqlite.Test.Monitoring.db";
         private readonly IMonitoringApi _monitoring;
         private readonly ISerializer _serializer;
+        private readonly ISnowflakeId _snowflakeId;
 
         public SqliteMonitoringApiTests()
         {
             _serializer = GetRequiredService<ISerializer>();
+            _snowflakeId = GetRequiredService<ISnowflakeId>();
             var storage = GetRequiredService<IDataStorage>();
             _monitoring = storage.GetMonitoringApi();
             Initialize(storage);
@@ -27,7 +29,7 @@ namespace DotNetCore.CAP.Sqlite.Test
 
         private void Initialize(IDataStorage storage)
         {
-            _publishedMessageId = SnowflakeId.Default().NextId();
+            _publishedMessageId = _snowflakeId.NextId();
             var publishMessage = storage.StoreMessageAsync("test.publish.message", new Message(
                 new Dictionary<string, string>()
                 {
@@ -39,7 +41,7 @@ namespace DotNetCore.CAP.Sqlite.Test
             var receivedMessage = storage.StoreReceivedMessageAsync("test.received.message", "test.group", new Message(
                 new Dictionary<string, string>()
                 {
-                    [Headers.MessageId] = SnowflakeId.Default().NextId().ToString(),
+                    [Headers.MessageId] = _snowflakeId.NextId().ToString(),
                     ["test-header"] = "test-value"
                 }, null)).GetAwaiter().GetResult();
             _receivedMessageId = long.Parse(receivedMessage.DbId);

@@ -25,18 +25,21 @@ namespace DotNetCore.CAP.Sqlite
         private readonly IOptions<SqliteOptions> _options;
         private readonly IStorageInitializer _initializer;
         private readonly ISerializer _serializer;
+        private readonly ISnowflakeId _snowflakeId;
 
         public SqliteDataStorage(
             IOptions<SqliteOptions> options, 
             IOptions<CapOptions> capOptions,
             IStorageInitializer initializer,
-            ISerializer serializer
+            ISerializer serializer,
+            ISnowflakeId snowflakeId
             )
         {
             _options = options;
             _capOptions = capOptions;
             _serializer = serializer;
             _initializer = initializer;
+            _snowflakeId = snowflakeId;
         }
 
         #region 7.1.1
@@ -98,7 +101,7 @@ namespace DotNetCore.CAP.Sqlite
             await connection.ExecuteAsync(sql);
         }
 
-        public virtual async Task ChangePublishStateAsync(MediumMessage message, StatusName state, object? transaction = null)
+        public virtual async Task ChangePublishStateAsync(MediumMessage message, StatusName state, object transaction = null)
         {
             await ChangeMessageStateAsync(_initializer.GetPublishedTableName(), message, state, transaction);
         }
@@ -159,7 +162,7 @@ namespace DotNetCore.CAP.Sqlite
         {
             var sqlParam = new
             {
-                Id = SnowflakeId.Default().NextId().ToString(),
+                Id = _snowflakeId.NextId().ToString(),
                 Version = _options.Value.Version,
                 Group = @group,
                 Name = name,
@@ -176,7 +179,7 @@ namespace DotNetCore.CAP.Sqlite
         {
             var mdMessage = new MediumMessage
             {
-                DbId = SnowflakeId.Default().NextId().ToString(),
+                DbId = _snowflakeId.NextId().ToString(),
                 Origin = message,
                 Added = DateTime.Now,
                 ExpiresAt = null,
@@ -274,7 +277,7 @@ namespace DotNetCore.CAP.Sqlite
             await connection.ExecuteAsync(sql, sqlParam);
         }
 
-        protected virtual async Task ChangeMessageStateAsync(string tableName, MediumMessage message, StatusName state, object? transaction = null)
+        protected virtual async Task ChangeMessageStateAsync(string tableName, MediumMessage message, StatusName state, object transaction = null)
         {
             var sql =
                $"UPDATE `{tableName}` SET `Content`= @Content,`Retries` = @Retries,`ExpiresAt` = @ExpiresAt,`StatusName` = @StatusName WHERE `Id` = @Id";
