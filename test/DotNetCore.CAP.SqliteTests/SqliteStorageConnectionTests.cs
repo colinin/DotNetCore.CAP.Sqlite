@@ -16,12 +16,14 @@ namespace DotNetCore.CAP.Sqlite.Tests
     {
         protected override string DataBaseName => @".\DotNetCore.CAP.Sqlite.Test.StorageConnection.db";
         private readonly IStorageInitializer _initializer;
+        private readonly ISnowflakeId _snowflakeId;
         private readonly SqliteDataStorage _storage;
         public SqliteStorageConnectionTests()
         {
-            var serializer = GetRequiredService<ISerializer>();
+            _snowflakeId = GetRequiredService<ISnowflakeId>();
             _initializer = GetRequiredService<IStorageInitializer>();
-            _storage = new SqliteDataStorage(SqliteOptions, CapOptions, _initializer, serializer);
+            var serializer = GetRequiredService<ISerializer>();
+            _storage = new SqliteDataStorage(SqliteOptions, CapOptions, _initializer, serializer, _snowflakeId);
         }
 
         [Fact]
@@ -66,7 +68,7 @@ namespace DotNetCore.CAP.Sqlite.Tests
         [Fact]
         public async Task Storage_Message_Test()
         {
-            var msgId = SnowflakeId.Default().NextId().ToString();
+            var msgId = _snowflakeId.NextId().ToString();
             var header = new Dictionary<string, string>()
             {
                 [Headers.MessageId] = msgId
@@ -80,7 +82,7 @@ namespace DotNetCore.CAP.Sqlite.Tests
         [Fact]
         public async Task Change_Publish_State_To_Delayed()
         {
-            var msgId = SnowflakeId.Default().NextId().ToString();
+            var msgId = _snowflakeId.NextId().ToString();
             var header = new Dictionary<string, string>()
             {
                 [Headers.MessageId] = msgId
@@ -98,7 +100,7 @@ namespace DotNetCore.CAP.Sqlite.Tests
         [Fact]
         public async Task Schedule_Messages_Of_Delayed()
         {
-            var msgId = SnowflakeId.Default().NextId().ToString();
+            var msgId = _snowflakeId.NextId().ToString();
             var header = new Dictionary<string, string>()
             {
                 [Headers.MessageId] = msgId
@@ -120,7 +122,7 @@ namespace DotNetCore.CAP.Sqlite.Tests
         [Fact]
         public async Task Store_Received_Message_Test()
         {
-            var msgId = SnowflakeId.Default().NextId().ToString();
+            var msgId = _snowflakeId.NextId().ToString();
             var header = new Dictionary<string, string>()
             {
                 [Headers.MessageId] = msgId
@@ -140,7 +142,7 @@ namespace DotNetCore.CAP.Sqlite.Tests
         [Fact]
         public async Task Change_Publish_State_Test()
         {
-            var msgId = SnowflakeId.Default().NextId().ToString();
+            var msgId = _snowflakeId.NextId().ToString();
             var header = new Dictionary<string, string>()
             {
                 [Headers.MessageId] = msgId
@@ -155,7 +157,7 @@ namespace DotNetCore.CAP.Sqlite.Tests
         [Fact]
         public async Task Change_Receive_State_Test()
         {
-            var msgId = SnowflakeId.Default().NextId().ToString();
+            var msgId = _snowflakeId.NextId().ToString();
             var header = new Dictionary<string, string>()
             {
                 [Headers.MessageId] = msgId
@@ -170,7 +172,7 @@ namespace DotNetCore.CAP.Sqlite.Tests
         [Fact]
         public async Task Get_Published_Messages_Of_Need_Retry_Test()
         {
-            var msgId = SnowflakeId.Default().NextId().ToString();
+            var msgId = _snowflakeId.NextId().ToString();
             var header = new Dictionary<string, string>()
             {
                 [Headers.MessageId] = msgId
@@ -186,7 +188,7 @@ namespace DotNetCore.CAP.Sqlite.Tests
         [Fact]
         public async Task Get_Received_Messages_Of_Need_Retry_Test()
         {
-            var msgId = SnowflakeId.Default().NextId().ToString();
+            var msgId = _snowflakeId.NextId().ToString();
             var header = new Dictionary<string, string>()
             {
                 [Headers.MessageId] = msgId
@@ -202,7 +204,7 @@ namespace DotNetCore.CAP.Sqlite.Tests
         [Fact]
         public async Task Delete_Expires_Test()
         {
-            var msgId = SnowflakeId.Default().NextId().ToString();
+            var msgId = _snowflakeId.NextId().ToString();
             var header = new Dictionary<string, string>()
             {
                 [Headers.MessageId] = msgId
