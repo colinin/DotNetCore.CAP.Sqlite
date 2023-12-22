@@ -93,7 +93,7 @@ namespace DotNetCore.CAP.Sqlite.Tests
 
             await _storage.ChangePublishStateToDelayedAsync(new[] { mdMessage.DbId } );
 
-            var messages = await _storage.GetPublishedMessagesOfNeedRetry();
+            var messages = await _storage.GetPublishedMessagesOfNeedRetry(TimeSpan.FromMinutes(-4));
             Assert.Empty(messages);
         }
 
@@ -181,7 +181,7 @@ namespace DotNetCore.CAP.Sqlite.Tests
 
             await _storage.StoreMessageAsync("test.name", message);
 
-            var needRetryMessags = await _storage.GetPublishedMessagesOfNeedRetry();
+            var needRetryMessags = await _storage.GetPublishedMessagesOfNeedRetry(TimeSpan.FromMinutes(-4));
             Assert.Single(needRetryMessags);
         }
 
@@ -197,7 +197,7 @@ namespace DotNetCore.CAP.Sqlite.Tests
 
             await _storage.StoreReceivedMessageAsync("test.name", "test.group", message);
 
-            var needRetryMessags = await _storage.GetReceivedMessagesOfNeedRetry();
+            var needRetryMessags = await _storage.GetReceivedMessagesOfNeedRetry(TimeSpan.FromMinutes(-4));
             Assert.Single(needRetryMessags);
         }
 

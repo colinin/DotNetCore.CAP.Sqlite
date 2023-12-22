@@ -215,14 +215,14 @@ namespace DotNetCore.CAP.Sqlite
             return removedCount;
         }
 
-        public virtual async Task<IEnumerable<MediumMessage>> GetPublishedMessagesOfNeedRetry()
+        public virtual async Task<IEnumerable<MediumMessage>> GetPublishedMessagesOfNeedRetry(TimeSpan lookbackSeconds)
         {
-            return await GetMessagesOfNeedRetryAsync(_initializer.GetPublishedTableName());
+            return await GetMessagesOfNeedRetryAsync(_initializer.GetPublishedTableName(), lookbackSeconds);
         }
 
-        public virtual async Task<IEnumerable<MediumMessage>> GetReceivedMessagesOfNeedRetry()
+        public virtual async Task<IEnumerable<MediumMessage>> GetReceivedMessagesOfNeedRetry(TimeSpan lookbackSeconds)
         {
-            return await GetMessagesOfNeedRetryAsync(_initializer.GetReceivedTableName());
+            return await GetMessagesOfNeedRetryAsync(_initializer.GetReceivedTableName(), lookbackSeconds);
         }
 
         public async Task ScheduleMessagesOfDelayedAsync(
@@ -295,9 +295,10 @@ namespace DotNetCore.CAP.Sqlite
             await connection.ExecuteAsync(sql, sqlParam, dbTransaction);
         }
 
-        protected virtual async Task<IEnumerable<MediumMessage>> GetMessagesOfNeedRetryAsync(string tableName)
+        protected virtual async Task<IEnumerable<MediumMessage>> GetMessagesOfNeedRetryAsync(string tableName, TimeSpan lookbackSeconds)
         {
-            var fourMinAgo = DateTime.Now.AddMinutes(-4).ToString("O");
+            var fourMinAgo = DateTime.Now.Subtract(lookbackSeconds);
+            //var fourMinAgo = DateTime.Now.AddMinutes(-4).ToString("O");
             var sql = $"SELECT `Id`,`Content`,`Retries`,`Added` FROM `{tableName}` WHERE `Retries` < @Retries AND `Version` = @Version AND `Added` < @Added AND (`StatusName` = @FailedStatusName OR `StatusName` = @ScheduledStatusName) LIMIT 200;";
             var sqlParam = new
             {
