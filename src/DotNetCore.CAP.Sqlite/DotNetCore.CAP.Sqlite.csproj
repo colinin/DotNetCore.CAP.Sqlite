@@ -3,7 +3,7 @@
 	<PropertyGroup>
 		<TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-		<Version>8.0.1</Version>
+		<Version>8.0.1.1</Version>
 		<RepositoryUrl>https://github.com/colinin/DotNetCore.CAP.Sqlite</RepositoryUrl>
 		<Authors>Colin</Authors>
 		<Description>CAP persistent Sqlite implementation</Description>
@@ -15,7 +15,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="Dapper" Version="2.1.24" />
-		<PackageReference Include="DotNetCore.CAP" Version="8.0.0" />
+		<PackageReference Include="DotNetCore.CAP" Version="8.0.1" />
 	</ItemGroup>
 
 	<ItemGroup Condition=" '$(TargetFramework)' == 'net6.0' ">
