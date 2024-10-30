@@ -8,81 +8,80 @@ using System;
 using System.IO;
 using System.Threading;
 
-namespace DotNetCore.CAP.Sqlite.Test
+namespace DotNetCore.CAP.Sqlite.Test;
+
+public abstract class DatabaseTestHost : IDisposable
 {
-    public abstract class DatabaseTestHost : IDisposable
+    protected virtual string DataBaseName => @".\DotNetCore.CAP.Sqlite.Test.db";
+    private readonly IServiceCollection _services;
+    private readonly IServiceProvider _serviceProvider;
+    protected ILogger<SqliteDataStorage> Logger;
+    protected IOptions<CapOptions> CapOptions;
+    protected IOptions<SqliteOptions> SqliteOptions;
+
+    protected DatabaseTestHost()
     {
-        protected virtual string DataBaseName => @".\DotNetCore.CAP.Sqlite.Test.db";
-        private readonly IServiceCollection _services;
-        private readonly IServiceProvider _serviceProvider;
-        protected ILogger<SqliteDataStorage> Logger;
-        protected IOptions<CapOptions> CapOptions;
-        protected IOptions<SqliteOptions> SqliteOptions;
-
-        protected DatabaseTestHost()
+        _services = new ServiceCollection();
+        _services.AddOptions();
+        _services.AddLogging();
+        _services.AddCap(options =>
         {
-            _services = new ServiceCollection();
-            _services.AddOptions();
-            _services.AddLogging();
-            _services.AddCap(options =>
+            options.UseStorageLock = true;
+            options.UseSqlite(ConnectionUtil.GetConnectionString(DataBaseName));
+        });
+
+        _serviceProvider = _services.BuildServiceProvider();
+
+        Logger = new Mock<ILogger<SqliteDataStorage>>().Object;
+
+        CapOptions = GetRequiredService<IOptions<CapOptions>>();
+        SqliteOptions = GetRequiredService<IOptions<SqliteOptions>>();
+
+        InitializeDatabase();
+    }
+
+    protected T GetService<T>()
+    {
+        return _serviceProvider.GetService<T>();
+    }
+
+    protected T GetRequiredService<T>()
+    {
+        return _serviceProvider.GetRequiredService<T>();
+    }
+
+    public void Dispose()
+    {
+        DeleteAllData();
+    }
+
+    private void InitializeDatabase()
+    {
+        var sqliteConn = ConnectionUtil.GetConnectionString(DataBaseName);
+        if (!File.Exists(DataBaseName))
+        {
+            using (var connection = ConnectionUtil.CreateConnection(sqliteConn))
             {
-                options.UseStorageLock = true;
-                options.UseSqlite(ConnectionUtil.GetConnectionString(DataBaseName));
-            });
-
-            _serviceProvider = _services.BuildServiceProvider();
-
-            Logger = new Mock<ILogger<SqliteDataStorage>>().Object;
-
-            CapOptions = GetRequiredService<IOptions<CapOptions>>();
-            SqliteOptions = GetRequiredService<IOptions<SqliteOptions>>();
-
-            InitializeDatabase();
-        }
-
-        protected T GetService<T>()
-        {
-            return _serviceProvider.GetService<T>();
-        }
-
-        protected T GetRequiredService<T>()
-        {
-            return _serviceProvider.GetRequiredService<T>();
-        }
-
-        public void Dispose()
-        {
-            DeleteAllData();
-        }
-
-        private void InitializeDatabase()
-        {
-            var sqliteConn = ConnectionUtil.GetConnectionString(DataBaseName);
-            if (!File.Exists(DataBaseName))
-            {
-                using (var connection = ConnectionUtil.CreateConnection(sqliteConn))
-                {
-                    connection.Open();
-                    var storage = _serviceProvider.GetService<IStorageInitializer>();
-                    var token = new CancellationTokenSource().Token;
-                    storage.InitializeAsync(token).GetAwaiter().GetResult();
-                    connection.Close();
-                }
+                connection.Open();
+                var storage = _serviceProvider.GetService<IStorageInitializer>();
+                var token = new CancellationTokenSource().Token;
+                storage.InitializeAsync(token).GetAwaiter().GetResult();
+                connection.Close();
             }
         }
+    }
 
 
-        private void DeleteAllData()
+    private void DeleteAllData()
+    {
+        var sqliteConn = ConnectionUtil.GetConnectionString(DataBaseName);
+        if (File.Exists(DataBaseName))
         {
-            var sqliteConn = ConnectionUtil.GetConnectionString(DataBaseName);
-            if (File.Exists(DataBaseName))
+            using (var connection = ConnectionUtil.CreateConnection(sqliteConn))
             {
-                using (var connection = ConnectionUtil.CreateConnection(sqliteConn))
-                {
-                    connection.Execute($@"
+                connection.Execute($@"
 DELETE FROM `cap.published`;
 DELETE FROM `cap.received`;");
-                }
             }
         }
     }

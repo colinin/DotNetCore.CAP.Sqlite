@@ -7,40 +7,39 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System;
 
-namespace DotNetCore.CAP
+namespace DotNetCore.CAP;
+
+public class SqliteOptions : EFOptions
 {
-    public class SqliteOptions : EFOptions
+    /// <summary>
+    /// Gets or sets the database's connection string that will be used to store database entities.
+    /// </summary>
+    public string ConnectionString { get; set; }
+}
+
+internal class ConfigureSqliteOptions : IConfigureOptions<SqliteOptions>
+{
+    private readonly IServiceScopeFactory _serviceScopeFactory;
+
+    public ConfigureSqliteOptions(IServiceScopeFactory serviceScopeFactory)
     {
-        /// <summary>
-        /// Gets or sets the database's connection string that will be used to store database entities.
-        /// </summary>
-        public string ConnectionString { get; set; }
+        _serviceScopeFactory = serviceScopeFactory;
     }
 
-    internal class ConfigureSqliteOptions : IConfigureOptions<SqliteOptions>
+    public void Configure(SqliteOptions options)
     {
-        private readonly IServiceScopeFactory _serviceScopeFactory;
-
-        public ConfigureSqliteOptions(IServiceScopeFactory serviceScopeFactory)
+        if (options.DbContextType != null)
         {
-            _serviceScopeFactory = serviceScopeFactory;
-        }
+            if (Helper.IsUsingType<ICapPublisher>(options.DbContextType))
+                throw new InvalidOperationException(
+                    "We detected that you are using ICapPublisher in DbContext, please change the configuration to use the storage extension directly to avoid circular references! eg:  x.UseSqlite()");
 
-        public void Configure(SqliteOptions options)
-        {
-            if (options.DbContextType != null)
-            {
-                if (Helper.IsUsingType<ICapPublisher>(options.DbContextType))
-                    throw new InvalidOperationException(
-                        "We detected that you are using ICapPublisher in DbContext, please change the configuration to use the storage extension directly to avoid circular references! eg:  x.UseSqlite()");
-
-                using var scope = _serviceScopeFactory.CreateScope();
-                var provider = scope.ServiceProvider;
-                using var dbContext = (DbContext)provider.GetRequiredService(options.DbContextType);
-                var connectionString = dbContext.Database.GetConnectionString();
-                if (string.IsNullOrEmpty(connectionString)) throw new ArgumentNullException(connectionString);
-                options.ConnectionString = connectionString;
-            }
+            using var scope = _serviceScopeFactory.CreateScope();
+            var provider = scope.ServiceProvider;
+            using var dbContext = (DbContext)provider.GetRequiredService(options.DbContextType);
+            var connectionString = dbContext.Database.GetConnectionString();
+            if (string.IsNullOrEmpty(connectionString)) throw new ArgumentNullException(connectionString);
+            options.ConnectionString = connectionString;
         }
     }
 }

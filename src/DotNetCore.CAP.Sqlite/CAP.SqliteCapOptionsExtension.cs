@@ -8,29 +8,28 @@ using Microsoft.Extensions.Options;
 using System;
 
 // ReSharper disable once CheckNamespace
-namespace DotNetCore.CAP
+namespace DotNetCore.CAP;
+
+internal class SqliteCapOptionsExtension : ICapOptionsExtension
 {
-    internal class SqliteCapOptionsExtension : ICapOptionsExtension
+    private readonly Action<SqliteOptions> _configure;
+
+    public SqliteCapOptionsExtension(Action<SqliteOptions> configure)
     {
-        private readonly Action<SqliteOptions> _configure;
-
-        public SqliteCapOptionsExtension(Action<SqliteOptions> configure)
-        {
-            _configure = configure;
-        }
-
-        public void AddServices(IServiceCollection services)
-        {
-            services.AddSingleton(new CapStorageMarkerService("Sqlite"));
-
-            services.AddSingleton<IDataStorage, SqliteDataStorage>();
-            services.AddSingleton<IStorageInitializer, SqliteStorageInitializer>();
-            services.AddSingleton<ICapTransaction, SqliteCapTransaction>();
-
-
-            //Add SqliteOptions
-            services.Configure(_configure);
-            services.AddSingleton<IConfigureOptions<SqliteOptions>, ConfigureSqliteOptions>();
-        } 
+        _configure = configure;
     }
+
+    public void AddServices(IServiceCollection services)
+    {
+        services.AddSingleton(new CapStorageMarkerService("Sqlite"));
+
+        services.AddSingleton<IDataStorage, SqliteDataStorage>();
+        services.AddSingleton<IStorageInitializer, SqliteStorageInitializer>();
+        services.AddSingleton<ICapTransaction, SqliteCapTransaction>();
+
+
+        //Add SqliteOptions
+        services.Configure(_configure);
+        services.AddSingleton<IConfigureOptions<SqliteOptions>, ConfigureSqliteOptions>();
+    } 
 }
