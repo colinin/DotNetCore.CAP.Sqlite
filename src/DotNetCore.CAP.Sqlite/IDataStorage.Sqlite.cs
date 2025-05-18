@@ -205,10 +205,17 @@ public class SqliteDataStorage : IDataStorage
 
     public virtual async Task<int> DeleteExpiresAsync(string table, DateTime timeout, int batchCount = 1000, CancellationToken token = default)
     {
-        // TODO: Need to enable limit support
-        // https://sqlite.org/compile.html#enable_update_delete_limit
-        var sql = $"DELETE FROM `{table}` WHERE ExpiresAt < @timeout AND StatusName IN ('{StatusName.Succeeded}','{StatusName.Failed}') ";
-        var sqlParam = new { timeout = timeout };
+        var sql = @$"DELETE FROM `{table}`
+            WHERE Id IN (
+                SELECT Id 
+                FROM `{table}`
+                WHERE ExpiresAt < @timeout
+                AND StatusName IN ('{StatusName.Succeeded}','{StatusName.Failed}')
+                ORDER BY Id
+                LIMIT @batchCount
+            );";
+
+        var sqlParam = new { timeout = timeout, batchCount = batchCount };
         await using var connection = new SqliteConnection(_options.Value.ConnectionString);
         var removedCount = await connection.ExecuteAsync(sql, sqlParam);
         return removedCount;
