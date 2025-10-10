@@ -231,19 +231,41 @@ public class SqliteDataStorage : IDataStorage
         return await GetMessagesOfNeedRetryAsync(_initializer.GetReceivedTableName(), lookbackSeconds);
     }
 
+    public virtual async Task<int> DeleteReceivedMessageAsync(long id)
+    {
+        var sql = $"DELETE FROM `{_initializer.GetReceivedTableName()}` WHERE Id={id};";
+
+        await using var connection = new SqliteConnection(_options.Value.ConnectionString);
+        await connection.OpenAsync();
+        var result = await connection.ExecuteAsync(sql);
+        return result;
+    }
+
+    public virtual async Task<int> DeletePublishedMessageAsync(long id)
+    {
+        var sql = $"DELETE FROM `{_initializer.GetPublishedTableName()}` WHERE Id={id};";
+
+        await using var connection = new SqliteConnection(_options.Value.ConnectionString);
+        await connection.OpenAsync();
+        var result = await connection.ExecuteAsync(sql);
+        return result;
+    }
+
+
     public async Task ScheduleMessagesOfDelayedAsync(
         Func<object, IEnumerable<MediumMessage>, Task> scheduleTask,
         CancellationToken token = default)
     {
         var sql =
             $"SELECT `Id`,`Content`,`Retries`,`Added`,`ExpiresAt` FROM `{_initializer.GetPublishedTableName()}` WHERE `Version` = @Version " +
-            $"AND ((`ExpiresAt` < @TwoMinutesLater AND `StatusName` = '{StatusName.Delayed}') OR (`ExpiresAt` < @OneMinutesAgo AND `StatusName` = '{StatusName.Queued}'));";
+            $"AND ((`ExpiresAt` < @TwoMinutesLater AND `StatusName` = '{StatusName.Delayed}') OR (`ExpiresAt` < @OneMinutesAgo AND `StatusName` = '{StatusName.Queued}')) LIMIT @BatchSize ;";
 
         object sqlParam = new
         {
             Version = _capOptions.Value.Version,
             TwoMinutesLater = DateTime.Now.AddMinutes(2),
             OneMinutesAgo = DateTime.Now.AddMinutes(-1),
+            BatchSize = _capOptions.Value.SchedulerBatchSize,
         };
 
         await using var connection = new SqliteConnection(_options.Value.ConnectionString);

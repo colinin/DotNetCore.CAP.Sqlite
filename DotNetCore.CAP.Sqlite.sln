@@ -19,6 +19,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflow", "workflow", "{EE
 		.github\workflows\release.yml = .github\workflows\release.yml
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.Redis.Sqlite", "samples\Sample.Redis.Sqlite\Sample.Redis.Sqlite.csproj", "{A61FF399-52CC-4DF9-BD9E-30B33BDED595}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +37,10 @@ Global
 		{9F917606-E716-4E9B-8128-F1843B7B5A48}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9F917606-E716-4E9B-8128-F1843B7B5A48}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9F917606-E716-4E9B-8128-F1843B7B5A48}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A61FF399-52CC-4DF9-BD9E-30B33BDED595}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A61FF399-52CC-4DF9-BD9E-30B33BDED595}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A61FF399-52CC-4DF9-BD9E-30B33BDED595}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A61FF399-52CC-4DF9-BD9E-30B33BDED595}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -41,6 +49,7 @@ Global
 		{D49CA8AD-7C76-486C-9AC0-4B6567BF24C1} = {4A1D2C90-FDAA-483E-B53B-106BD3298C75}
 		{9F917606-E716-4E9B-8128-F1843B7B5A48} = {814927CB-3ED4-41A5-AFEA-B5984E108FBF}
 		{EEDA2460-224B-4A4C-B015-08281A98B229} = {173359D0-FCD7-4989-8F6B-9B3EDFE4F7CE}
+		{A61FF399-52CC-4DF9-BD9E-30B33BDED595} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CA0BA1E-2B0E-45A5-9B37-66A4DA01EBF8}
