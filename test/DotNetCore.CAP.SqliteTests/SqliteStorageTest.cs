@@ -1,5 +1,4 @@
-﻿using Dapper;
-using System.IO;
+﻿using System.IO;
 using Xunit;
 
 namespace DotNetCore.CAP.Sqlite.Test;
@@ -31,7 +30,7 @@ public class SqliteStorageTest : DatabaseTestHost
         using (var connection = ConnectionUtil.CreateConnection(_dbConnectionString))
         {
             var sql = $"SELECT name FROM sqlite_master where type='table' and name='{tableName}'";
-            var result = connection.QueryFirstOrDefault<string>(sql);
+            var result = connection.ExecuteScalar<string>(sql);
             Assert.NotNull(result);
             Assert.Equal(tableName, result);
         }

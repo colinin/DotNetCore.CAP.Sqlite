@@ -5,7 +5,6 @@ using DotNetCore.CAP.Serialization;
 using DotNetCore.CAP.Sqlite.Test;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -69,7 +68,7 @@ public class SqliteStorageConnectionTests : DatabaseTestHost
     public async Task Storage_Message_Test()
     {
         var msgId = _snowflakeId.NextId().ToString();
-        var header = new Dictionary<string, string>()
+        var header = new Dictionary<string, string?>()
         {
             [Headers.MessageId] = msgId
         };
@@ -83,7 +82,7 @@ public class SqliteStorageConnectionTests : DatabaseTestHost
     public async Task Change_Publish_State_To_Delayed()
     {
         var msgId = _snowflakeId.NextId().ToString();
-        var header = new Dictionary<string, string>()
+        var header = new Dictionary<string, string?>()
         {
             [Headers.MessageId] = msgId
         };
@@ -101,7 +100,7 @@ public class SqliteStorageConnectionTests : DatabaseTestHost
     public async Task Schedule_Messages_Of_Delayed()
     {
         var msgId = _snowflakeId.NextId().ToString();
-        var header = new Dictionary<string, string>()
+        var header = new Dictionary<string, string?>()
         {
             [Headers.MessageId] = msgId
         };
@@ -123,7 +122,7 @@ public class SqliteStorageConnectionTests : DatabaseTestHost
     public async Task Store_Received_Message_Test()
     {
         var msgId = _snowflakeId.NextId().ToString();
-        var header = new Dictionary<string, string>()
+        var header = new Dictionary<string, string?>()
         {
             [Headers.MessageId] = msgId
         };
@@ -143,7 +142,7 @@ public class SqliteStorageConnectionTests : DatabaseTestHost
     public async Task Change_Publish_State_Test()
     {
         var msgId = _snowflakeId.NextId().ToString();
-        var header = new Dictionary<string, string>()
+        var header = new Dictionary<string, string?>()
         {
             [Headers.MessageId] = msgId
         };
@@ -158,7 +157,7 @@ public class SqliteStorageConnectionTests : DatabaseTestHost
     public async Task Change_Receive_State_Test()
     {
         var msgId = _snowflakeId.NextId().ToString();
-        var header = new Dictionary<string, string>()
+        var header = new Dictionary<string, string?>()
         {
             [Headers.MessageId] = msgId
         };
@@ -173,7 +172,7 @@ public class SqliteStorageConnectionTests : DatabaseTestHost
     public async Task Get_Published_Messages_Of_Need_Retry_Test()
     {
         var msgId = _snowflakeId.NextId().ToString();
-        var header = new Dictionary<string, string>()
+        var header = new Dictionary<string, string?>()
         {
             [Headers.MessageId] = msgId
         };
@@ -189,7 +188,7 @@ public class SqliteStorageConnectionTests : DatabaseTestHost
     public async Task Get_Received_Messages_Of_Need_Retry_Test()
     {
         var msgId = _snowflakeId.NextId().ToString();
-        var header = new Dictionary<string, string>()
+        var header = new Dictionary<string, string?>()
         {
             [Headers.MessageId] = msgId
         };
@@ -205,7 +204,7 @@ public class SqliteStorageConnectionTests : DatabaseTestHost
     public async Task Delete_Expires_Test()
     {
         var msgId = _snowflakeId.NextId().ToString();
-        var header = new Dictionary<string, string>()
+        var header = new Dictionary<string, string?>()
         {
             [Headers.MessageId] = msgId
         };

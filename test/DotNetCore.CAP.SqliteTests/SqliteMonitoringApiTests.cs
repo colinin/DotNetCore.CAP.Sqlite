@@ -31,7 +31,7 @@ public class SqliteMonitoringApiTests : DatabaseTestHost
     {
         _publishedMessageId = _snowflakeId.NextId();
         var publishMessage = storage.StoreMessageAsync("test.publish.message", new Message(
-            new Dictionary<string, string>()
+            new Dictionary<string, string?>()
             {
                 [Headers.MessageId] = _publishedMessageId.ToString(),
                 ["test-header"] = "test-value"
@@ -39,7 +39,7 @@ public class SqliteMonitoringApiTests : DatabaseTestHost
         storage.ChangePublishStateAsync(publishMessage, Internal.StatusName.Succeeded);
         
         var receivedMessage = storage.StoreReceivedMessageAsync("test.received.message", "test.group", new Message(
-            new Dictionary<string, string>()
+            new Dictionary<string, string?>()
             {
                 [Headers.MessageId] = _snowflakeId.NextId().ToString(),
                 ["test-header"] = "test-value"
@@ -78,13 +78,13 @@ public class SqliteMonitoringApiTests : DatabaseTestHost
         };
         var uppercaseMessags = await _monitoring.GetMessagesAsync(uppercaseMessageDto);
 
-        Assert.Equal(1, normalMessags.Items.Count);
+        Assert.Equal(1, normalMessags!.Items!.Count);
         Assert.Equal(1, normalMessags.Totals);
 
-        Assert.Equal(1, lowercaseMessags.Items.Count);
+        Assert.Equal(1, lowercaseMessags!.Items!.Count);
         Assert.Equal(1, lowercaseMessags.Totals);
 
-        Assert.Equal(1, uppercaseMessags.Items.Count);
+        Assert.Equal(1, uppercaseMessags!.Items!.Count);
         Assert.Equal(1, uppercaseMessags.Totals);
     }
 
@@ -95,7 +95,7 @@ public class SqliteMonitoringApiTests : DatabaseTestHost
     public async Task Get_Published_Message_Test()
     {
         var message = await _monitoring.GetPublishedMessageAsync(_publishedMessageId);
-        message.Origin = _serializer.Deserialize(message.Content);
+        message!.Origin = _serializer.Deserialize(message.Content)!;
         var headerExists = message.Origin.Headers.ContainsKey("test-header");
         Assert.True(headerExists);
         Assert.Equal("test-value", message.Origin.Headers["test-header"]);
@@ -105,7 +105,7 @@ public class SqliteMonitoringApiTests : DatabaseTestHost
     public async Task Get_Received_Message_Test()
     {
         var message = await _monitoring.GetReceivedMessageAsync(_receivedMessageId);
-        message.Origin = _serializer.Deserialize(message.Content);
+        message!.Origin = _serializer.Deserialize(message.Content)!;
         var headerExists = message.Origin.Headers.ContainsKey("test-header");
         Assert.True(headerExists);
         Assert.Equal("test-value", message.Origin.Headers["test-header"]);
