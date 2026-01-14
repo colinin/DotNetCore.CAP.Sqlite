@@ -232,7 +232,7 @@ public class SqliteStorageConnectionTests : DatabaseTestHost
     public async Task Delete_Received_Message_Test()
     {
         var msgId = _snowflakeId.NextId().ToString();
-        var header = new Dictionary<string, string>()
+        var header = new Dictionary<string, string?>()
         {
             [Headers.MessageId] = msgId
         };
@@ -249,7 +249,7 @@ public class SqliteStorageConnectionTests : DatabaseTestHost
     public async Task Delete_Published_Message_Test()
     {
         var msgId = _snowflakeId.NextId().ToString();
-        var header = new Dictionary<string, string>()
+        var header = new Dictionary<string, string?>()
         {
             [Headers.MessageId] = msgId
         };
