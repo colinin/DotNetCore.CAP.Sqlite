@@ -1,5 +1,4 @@
-﻿using Dapper;
-using DotNetCore.CAP.Persistence;
+﻿using DotNetCore.CAP.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -52,14 +51,14 @@ public class SqliteStorageInitializer : IStorageInitializer
         var sql = CreateDbTablesScript();
         await using (var connection = new SqliteConnection(_options.Value.ConnectionString))
         {
-            var sqlParam = new
+            object[] sqlParams =
             {
-                PubKey = $"publish_retry_{_capOptions.Value.Version}",
-                RecKey = $"received_retry_{_capOptions.Value.Version}",
-                LastLockTime = DateTime.MinValue,
+                new SqliteParameter("@PubKey", $"publish_retry_{_capOptions.Value.Version}"),
+                new SqliteParameter("@RecKey", $"received_retry_{_capOptions.Value.Version}"),
+                new SqliteParameter("@LastLockTime", DateTime.MinValue)
             };
 
-            await connection.ExecuteAsync(sql, sqlParam);
+            await connection.ExecuteNonQueryAsync(sql, sqlParams: sqlParams);
         }
 
         _logger.LogDebug("Ensuring all create database tables script are applied.");

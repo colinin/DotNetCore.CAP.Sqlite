@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Options;
 using Sample.Redis.Sqlite;
 using StackExchange.Redis;
 

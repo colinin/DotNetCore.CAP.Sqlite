@@ -3,6 +3,7 @@
 
 using DotNetCore.CAP;
 using System;
+using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -17,7 +18,7 @@ internal class CapEFDbTransaction : IDbContextTransaction
     public CapEFDbTransaction(ICapTransaction transaction)
     {
         _transaction = transaction;
-        var dbContextTransaction = (IDbContextTransaction) _transaction.DbTransaction;
+        var dbContextTransaction = (IDbContextTransaction) _transaction.DbTransaction!;
         TransactionId = dbContextTransaction.TransactionId;
     }
 
@@ -53,4 +54,13 @@ internal class CapEFDbTransaction : IDbContextTransaction
     }
 
     public Guid TransactionId { get; }
+
+    public DbTransaction Instance
+    {
+        get
+        {
+            var dbContextTransaction = (IDbContextTransaction)_transaction.DbTransaction!;
+            return dbContextTransaction.GetDbTransaction();
+        }
+    }
 }

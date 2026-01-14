@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Core Community. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Dapper;
 using DotNetCore.CAP.Internal;
 using DotNetCore.CAP.Messages;
 using DotNetCore.CAP.Monitoring;
@@ -35,12 +34,12 @@ internal class SqliteMonitoringApi : IMonitoringApi
         _serializer = serializer;
     }
 
-    public async virtual Task<MediumMessage> GetPublishedMessageAsync(long id)
+    public async virtual Task<MediumMessage?> GetPublishedMessageAsync(long id)
     {
         return await GetMessageAsync(_published, id);
     }
 
-    public async virtual Task<MediumMessage> GetReceivedMessageAsync(long id)
+    public async virtual Task<MediumMessage?> GetReceivedMessageAsync(long id)
     {
         return await GetMessageAsync(_received, id);
     }
@@ -49,26 +48,39 @@ internal class SqliteMonitoringApi : IMonitoringApi
     {
         var sqlBuilder = new StringBuilder();
         sqlBuilder.AppendLine("PRAGMA READ_UNCOMMITTED = 1;")
-            .AppendFormat("SELECT COUNT(`Id`) FROM `{0}` WHERE `StatusName` = 'Succeeded';", _published)
-            .AppendLine()
-            .AppendFormat("SELECT COUNT(`Id`) FROM `{0}` WHERE `StatusName` = 'Succeeded';", _received)
-            .AppendLine()
-            .AppendFormat("SELECT COUNT(`Id`) FROM `{0}` WHERE `StatusName` = 'Failed';", _published)
-            .AppendLine()
-            .AppendFormat("SELECT COUNT(`Id`) FROM `{0}` WHERE `StatusName` = 'Failed';", _received);
+            .AppendLine("SELECT")
+            .AppendLine("(")
+            .AppendFormat("SELECT COUNT(`Id`) FROM `{0}` WHERE `StatusName` = 'Succeeded'", _published)
+            .AppendLine(") AS PublishedSucceeded,")
+            .AppendLine("(")
+            .AppendFormat("SELECT COUNT(`Id`) FROM `{0}` WHERE `StatusName` = 'Succeeded'", _received)
+            .AppendLine(") AS ReceivedSucceeded,")
+            .AppendLine("(")
+            .AppendFormat("SELECT COUNT(`Id`) FROM `{0}` WHERE `StatusName` = 'Failed'", _published)
+            .AppendLine(") AS PublishedFailed,")
+            .AppendLine("(")
+            .AppendFormat("SELECT COUNT(`Id`) FROM `{0}` WHERE `StatusName` = 'Failed'", _received)
+            .AppendLine(") AS ReceivedFailed,")
+            .AppendLine("(")
+            .AppendFormat("SELECT COUNT(`Id`) FROM `{0}` WHERE `StatusName` = 'Delayed'", _published)
+            .AppendLine(") AS PublishedDelayed;");
 
         await using var connection = new SqliteConnection(_options.Value.ConnectionString);
-
-        var multi = await connection.QueryMultipleAsync(sqlBuilder.ToString());
-
-        var statistics = new StatisticsDto
+        var statistics = await connection.ExecuteReaderAsync(sqlBuilder.ToString(), async reader =>
         {
-            PublishedSucceeded = multi.ReadSingle<int>(),
-            ReceivedSucceeded = multi.ReadSingle<int>(),
+            var statisticsDto = new StatisticsDto();
 
-            PublishedFailed = multi.ReadSingle<int>(),
-            ReceivedFailed = multi.ReadSingle<int>()
-        };
+            while (await reader.ReadAsync())
+            {
+                statisticsDto.PublishedSucceeded = !reader.IsDBNull(0) ? reader.GetInt32(0) : 0;
+                statisticsDto.ReceivedSucceeded = !reader.IsDBNull(1) ? reader.GetInt32(1) : 0;
+                statisticsDto.PublishedFailed = !reader.IsDBNull(2) ? reader.GetInt32(2) : 0;
+                statisticsDto.ReceivedFailed = !reader.IsDBNull(3) ? reader.GetInt32(3) : 0;
+                statisticsDto.PublishedDelayed = !reader.IsDBNull(4) ? reader.GetInt32(4) : 0;
+            }
+
+            return statisticsDto;
+        });
 
         return statistics;
     }
@@ -110,14 +122,14 @@ internal class SqliteMonitoringApi : IMonitoringApi
             where += " AND `Content` like @Content";
         }
 
-        var sqlParams = new
+        object[] sqlParams =
         {
-            queryDto.StatusName,
-            queryDto.Group,
-            queryDto.Name,
-            Content = $"%{queryDto.Content}%",//参数化Like查询的一个错误
-            Offset = queryDto.CurrentPage * queryDto.PageSize,
-            Limit = queryDto.PageSize
+            new SqliteParameter("@StatusName", queryDto.StatusName ?? string.Empty),
+            new SqliteParameter("@Group", queryDto.Group ?? string.Empty),
+            new SqliteParameter("@Name", queryDto.Name ?? string.Empty),
+            new SqliteParameter("@Content", $"%{queryDto.Content}%"),
+            new SqliteParameter("@Offset", queryDto.CurrentPage * queryDto.PageSize),
+            new SqliteParameter("@Limit", queryDto.PageSize)
         };
 
         var sqlQuery =
@@ -125,15 +137,40 @@ internal class SqliteMonitoringApi : IMonitoringApi
 
         await using var connection = new SqliteConnection(_options.Value.ConnectionString);
 
-        var count = await connection.QueryFirstAsync<int>(
+        var count = await connection.ExecuteScalarAsync<int>(
             $"SELECT COUNT(1) FROM `{tableName}` WHERE 1 = 1 {where}",
-            sqlParams);
+            new SqliteParameter("@StatusName", queryDto.StatusName ?? string.Empty),
+            new SqliteParameter("@Group", queryDto.Group ?? string.Empty),
+            new SqliteParameter("@Name", queryDto.Name ?? string.Empty),
+            new SqliteParameter("@Content", $"%{queryDto.Content}%"));
 
-        var messages = (await connection.QueryAsync<MessageDto>(sqlQuery, sqlParams)).ToList();
+        var items = await connection.ExecuteReaderAsync(sqlQuery, async reader =>
+        {
+            var messages = new List<MessageDto>();
+
+            while (await reader.ReadAsync())
+            {
+                var index = 0;
+                messages.Add(new MessageDto
+                {
+                    Id = reader.GetInt64(index++).ToString(),
+                    Version = reader.GetString(index++),
+                    Name = reader.GetString(index++),
+                    Group = queryDto.MessageType == MessageType.Subscribe ? reader.GetString(index++) : default,
+                    Content = reader.GetString(index++),
+                    Retries = reader.GetInt32(index++),
+                    Added = reader.GetDateTime(index++),
+                    ExpiresAt = reader.IsDBNull(index++) ? null : reader.GetDateTime(index - 1),
+                    StatusName = reader.GetString(index)
+                });
+            }
+
+            return messages;
+        }, sqlParams: sqlParams);
 
         return new PagedQueryResult<MessageDto>
         {
-            Items = messages,
+            Items = items,
             PageIndex = queryDto.CurrentPage,
             PageSize = queryDto.PageSize,
             Totals = count
@@ -160,29 +197,42 @@ internal class SqliteMonitoringApi : IMonitoringApi
         return GetNumberOfMessage(_received, nameof(StatusName.Succeeded));
     }
 
-    private async Task<MediumMessage> GetMessageAsync(string tableName, long id)
+    private async Task<MediumMessage?> GetMessageAsync(string tableName, long id)
     {
         var sql = $@"SELECT `Id` as DbId, `Content`,`Added`,`ExpiresAt`,`Retries` FROM `{tableName}` WHERE `Id`=@Id;";
         var sqlParam = new { Id = id }; 
         await using var connection = new SqliteConnection(_options.Value.ConnectionString);
-
-        var message = await connection.QueryFirstOrDefaultAsync<MediumMessage>(sql, sqlParam);
-
-        if (!string.IsNullOrWhiteSpace(message.Content))
+        var mediumMessage = await connection.ExecuteReaderAsync(sql, async reader =>
         {
-            message.Origin = _serializer.Deserialize(message.Content);
-        }
+            MediumMessage? message = null;
 
-        return message;
+            while (await reader.ReadAsync())
+            {
+                message = new MediumMessage
+                {
+                    DbId = reader.GetInt64(0).ToString(),
+                    Origin = _serializer.Deserialize(reader.GetString(1))!,
+                    Content = reader.GetString(1),
+                    Added = reader.GetDateTime(2),
+                    ExpiresAt = !reader.IsDBNull(3) ? reader.GetDateTime(3) : null,
+                    Retries = reader.GetInt32(4)
+                };
+            }
+
+            return message;
+        }, sqlParams: new SqliteParameter("@Id", id));
+
+        return mediumMessage;
     }
 
     private async ValueTask<int> GetNumberOfMessage(string tableName, string statusName)
     {
-        var sqlQuery = $"SELECT COUNT(`Id`) FROM `{tableName}` WHERE `StatusName` = @state";
+        var sqlQuery = $"SELECT COUNT(`Id`) FROM `{tableName}` WHERE `StatusName` = @State";
 
         await using var connection = new SqliteConnection(_options.Value.ConnectionString);
 
-        var count = await connection.ExecuteScalarAsync<int>(sqlQuery, new { state = statusName });
+        var count = await connection.ExecuteScalarAsync<int>(sqlQuery,
+            new SqliteParameter("@State", statusName));
         return count;
     }
 
@@ -212,44 +262,48 @@ internal class SqliteMonitoringApi : IMonitoringApi
             SELECT STRFTIME('%Y-%m-%d-%H', `Added`) AS Key,
                 COUNT(`id`) AS Count
             FROM  `{tableName}`
-            WHERE `StatusName` = @statusName
+            WHERE `StatusName` = @StatusName
             GROUP BY STRFTIME('%Y-%m-%d-%H', `Added`)
-        ) AS aggr WHERE aggr.`Key` >= @minKey AND aggr.`Key` <= @maxKey;;";
+        ) AS aggr WHERE aggr.`Key` >= @MinKey AND aggr.`Key` <= @MaxKey;;";
 
+        object[] sqlParams =
+        {
+            new SqliteParameter("@StatusName", statusName),
+            new SqliteParameter("@MinKey", keyMaps.Keys.Min()),
+            new SqliteParameter("@MaxKey", keyMaps.Keys.Max())
+        };
+
+        Dictionary<string, int> valuesMap;
         await using var connection = new SqliteConnection(_options.Value.ConnectionString);
         {
-            var valuesMap = (await connection.QueryAsync<TimelineCounter>(
-                sqlQuery,
-                new
-                {
-                    minKey = keyMaps.Keys.Min(),
-                    maxKey = keyMaps.Keys.Max(),
-                    statusName,
-                })).ToDictionary(x => x.Key, x => x.Count);
-
-
-            foreach (var key in keyMaps.Keys)
+            valuesMap = await connection.ExecuteReaderAsync(sqlQuery, async reader =>
             {
-                if (!valuesMap.ContainsKey(key))
+                var dictionary = new Dictionary<string, int>();
+
+                while (await reader.ReadAsync())
                 {
-                    valuesMap.Add(key, 0);
+                    dictionary.Add(reader.GetString(0), reader.GetInt32(1));
                 }
-            }
 
-            var result = new Dictionary<DateTime, int>();
-            for (var i = 0; i < keyMaps.Count; i++)
-            {
-                var value = valuesMap[keyMaps.ElementAt(i).Key];
-                result.Add(keyMaps.ElementAt(i).Value, value);
-            }
-
-            return result;
+                return dictionary;
+            }, sqlParams: sqlParams);
         }
-    }
 
-    class TimelineCounter
-    {
-        public string Key { get; set; }
-        public int Count { get; set; }
+        foreach (var key in keyMaps.Keys)
+        {
+            if (!valuesMap.ContainsKey(key))
+            {
+                valuesMap.Add(key, 0);
+            }
+        }
+
+        var result = new Dictionary<DateTime, int>();
+        for (var i = 0; i < keyMaps.Count; i++)
+        {
+            var value = valuesMap[keyMaps.ElementAt(i).Key];
+            result.Add(keyMaps.ElementAt(i).Value, value);
+        }
+
+        return result;
     }
 }

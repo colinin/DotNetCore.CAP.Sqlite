@@ -1,5 +1,4 @@
-﻿using Dapper;
-using DotNetCore.CAP.Persistence;
+﻿using DotNetCore.CAP.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -40,12 +39,12 @@ public abstract class DatabaseTestHost : IDisposable
         InitializeDatabase();
     }
 
-    protected T GetService<T>()
+    protected T? GetService<T>()
     {
         return _serviceProvider.GetService<T>();
     }
 
-    protected T GetRequiredService<T>()
+    protected T GetRequiredService<T>() where T : notnull
     {
         return _serviceProvider.GetRequiredService<T>();
     }
@@ -63,7 +62,7 @@ public abstract class DatabaseTestHost : IDisposable
             using (var connection = ConnectionUtil.CreateConnection(sqliteConn))
             {
                 connection.Open();
-                var storage = _serviceProvider.GetService<IStorageInitializer>();
+                var storage = _serviceProvider.GetRequiredService<IStorageInitializer>();
                 var token = new CancellationTokenSource().Token;
                 storage.InitializeAsync(token).GetAwaiter().GetResult();
                 connection.Close();
@@ -79,7 +78,7 @@ public abstract class DatabaseTestHost : IDisposable
         {
             using (var connection = ConnectionUtil.CreateConnection(sqliteConn))
             {
-                connection.Execute($@"
+                connection.ExecuteNonQuery($@"
 DELETE FROM `cap.published`;
 DELETE FROM `cap.received`;");
             }
