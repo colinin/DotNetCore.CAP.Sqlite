@@ -236,8 +236,7 @@ public class SqliteDataStorage : IDataStorage
         var sql = $"DELETE FROM `{_initializer.GetReceivedTableName()}` WHERE Id={id};";
 
         await using var connection = new SqliteConnection(_options.Value.ConnectionString);
-        await connection.OpenAsync();
-        var result = await connection.ExecuteAsync(sql);
+        var result = await connection.ExecuteNonQueryAsync(sql);
         return result;
     }
 
@@ -367,4 +366,5 @@ public class SqliteDataStorage : IDataStorage
 
         return result;
     }
+
 }
