@@ -53,7 +53,7 @@ public class SqliteCapTransaction : CapTransactionBase
                 await dbContextTransaction.CommitAsync(cancellationToken);
                 break;
         }
-        Flush();
+        await FlushAsync();
     }
 
     public override void Rollback()

@@ -25,8 +25,6 @@ internal class SqliteCapOptionsExtension : ICapOptionsExtension
 
         services.AddSingleton<IDataStorage, SqliteDataStorage>();
         services.AddSingleton<IStorageInitializer, SqliteStorageInitializer>();
-        services.AddSingleton<ICapTransaction, SqliteCapTransaction>();
-
 
         //Add SqliteOptions
         services.Configure(_configure);

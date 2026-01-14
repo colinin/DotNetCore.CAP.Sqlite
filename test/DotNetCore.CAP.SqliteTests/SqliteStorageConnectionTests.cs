@@ -227,4 +227,38 @@ public class SqliteStorageConnectionTests : DatabaseTestHost
         Assert.Equal(1, delPublishMessageCount);
         Assert.Equal(1, delReceivedMessageCount);
     }
+
+    [Fact]
+    public async Task Delete_Received_Message_Test()
+    {
+        var msgId = _snowflakeId.NextId().ToString();
+        var header = new Dictionary<string, string>()
+        {
+            [Headers.MessageId] = msgId
+        };
+        var message = new Message(header, null);
+
+        var storedMessage = await _storage.StoreReceivedMessageAsync("test.name", "test.group", message);
+
+        var result = await _storage.DeleteReceivedMessageAsync(long.Parse(storedMessage.DbId));
+
+        Assert.Equal(1, result);
+    }
+
+    [Fact]
+    public async Task Delete_Published_Message_Test()
+    {
+        var msgId = _snowflakeId.NextId().ToString();
+        var header = new Dictionary<string, string>()
+        {
+            [Headers.MessageId] = msgId
+        };
+        var message = new Message(header, null);
+
+        var storedMessage = await _storage.StoreMessageAsync("test.name", message);
+
+        var result = await _storage.DeletePublishedMessageAsync(long.Parse(storedMessage.DbId));
+
+        Assert.Equal(1, result);
+    }
 }

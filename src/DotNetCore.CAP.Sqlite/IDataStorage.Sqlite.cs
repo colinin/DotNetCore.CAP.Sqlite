@@ -231,16 +231,17 @@ public class SqliteDataStorage : IDataStorage
         return await GetMessagesOfNeedRetryAsync(_initializer.GetReceivedTableName(), lookbackSeconds);
     }
 
-    public async Task<int> DeleteReceivedMessageAsync(long id)
+    public virtual async Task<int> DeleteReceivedMessageAsync(long id)
     {
         var sql = $"DELETE FROM `{_initializer.GetReceivedTableName()}` WHERE Id={id};";
 
         await using var connection = new SqliteConnection(_options.Value.ConnectionString);
-        var result = await connection.ExecuteNonQueryAsync(sql);
+        await connection.OpenAsync();
+        var result = await connection.ExecuteAsync(sql);
         return result;
     }
 
-    public async Task<int> DeletePublishedMessageAsync(long id)
+    public virtual async Task<int> DeletePublishedMessageAsync(long id)
     {
         var sql = $"DELETE FROM `{_initializer.GetPublishedTableName()}` WHERE Id={id};";
 
