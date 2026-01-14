@@ -1,5 +1,4 @@
-﻿using Dapper;
-using DotNetCore.CAP;
+﻿using DotNetCore.CAP;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using System.Data;
@@ -57,7 +56,11 @@ public class ValuesController : Controller
         using (var connection = new SqliteConnection(AppDbContext.ConnectionString))
         {
             using var transaction = await connection.BeginTransactionAsync(_capBus, true);
-            await connection.ExecuteAsync($"insert into persons(name,age) values('{Guid.NewGuid()}', 1)", transaction: transaction.DbTransaction as IDbTransaction);
+            var command = connection.CreateCommand();
+            command.CommandText = $"insert into persons(name,age) values('{Guid.NewGuid()}', 1)";
+            command.CommandType = CommandType.Text;
+            command.Transaction = transaction.DbTransaction as SqliteTransaction;
+            await command.ExecuteNonQueryAsync();
             await _capBus.PublishAsync("sample.redis.sqlite", DateTime.Now);
         }
 

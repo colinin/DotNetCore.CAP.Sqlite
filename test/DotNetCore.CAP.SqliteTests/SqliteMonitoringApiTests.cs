@@ -119,6 +119,7 @@ public class SqliteMonitoringApiTests : DatabaseTestHost
         Assert.Equal(0, statistice.PublishedFailed);
         Assert.Equal(0, statistice.ReceivedSucceeded);
         Assert.Equal(1, statistice.ReceivedFailed);
+        Assert.Equal(0, statistice.PublishedDelayed);
     }
 
     [Fact]

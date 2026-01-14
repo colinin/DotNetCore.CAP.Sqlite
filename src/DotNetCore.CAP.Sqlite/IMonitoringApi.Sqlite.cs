@@ -65,11 +65,6 @@ internal class SqliteMonitoringApi : IMonitoringApi
             .AppendFormat("SELECT COUNT(`Id`) FROM `{0}` WHERE `StatusName` = 'Delayed'", _published)
             .AppendLine(") AS PublishedDelayed;");
 
-
-        sqlBuilder.AppendLine("PRAGMA READ_UNCOMMITTED = 1;")
-            .AppendLine();
-
-
         await using var connection = new SqliteConnection(_options.Value.ConnectionString);
         var statistics = await connection.ExecuteReaderAsync(sqlBuilder.ToString(), async reader =>
         {
