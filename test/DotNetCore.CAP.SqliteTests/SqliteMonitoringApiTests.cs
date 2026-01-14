@@ -78,13 +78,13 @@ public class SqliteMonitoringApiTests : DatabaseTestHost
         };
         var uppercaseMessags = await _monitoring.GetMessagesAsync(uppercaseMessageDto);
 
-        Assert.Equal(1, normalMessags!.Items!.Count);
+        Assert.Single(normalMessags!.Items!);
         Assert.Equal(1, normalMessags.Totals);
 
-        Assert.Equal(1, lowercaseMessags!.Items!.Count);
+        Assert.Single(lowercaseMessags!.Items!);
         Assert.Equal(1, lowercaseMessags.Totals);
 
-        Assert.Equal(1, uppercaseMessags!.Items!.Count);
+        Assert.Single(uppercaseMessags!.Items!);
         Assert.Equal(1, uppercaseMessags.Totals);
     }
 
