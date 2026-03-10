@@ -27,17 +27,17 @@ public class SqliteStorageInitializer : IStorageInitializer
 
     }
 
-    public string GetPublishedTableName()
+    public virtual string GetPublishedTableName()
     {
         return $"{_tablePrefix}.Published";
     }
 
-    public string GetReceivedTableName()
+    public virtual string GetReceivedTableName()
     {
         return $"{_tablePrefix}.Received";
     }
 
-    public string GetLockTableName()
+    public virtual string GetLockTableName()
     {
         return $"{_tablePrefix}.Locks";
     }
