@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/.github/" />
+  <Folder Name="/.github/workflow/">
+    <File Path=".github/workflows/dotnet-core.yml" />
+    <File Path=".github/workflows/release.yml" />
+  </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/Sample.Redis.Sqlite/Sample.Redis.Sqlite.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/DotNetCore.CAP.Sqlite/DotNetCore.CAP.Sqlite.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/DotNetCore.CAP.SqliteTests/DotNetCore.CAP.Sqlite.Test.csproj" />
+  </Folder>
+</Solution>
