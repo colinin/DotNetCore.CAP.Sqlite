@@ -1,7 +1,7 @@
 <Solution>
   <Folder Name="/.github/" />
   <Folder Name="/.github/workflow/">
-    <File Path=".github/workflows/dotnet-core.yml" />
+    <File Path=".github/workflows/publish.yml" />
     <File Path=".github/workflows/release.yml" />
   </Folder>
   <Folder Name="/samples/">

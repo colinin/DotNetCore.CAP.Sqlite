@@ -1,0 +1,39 @@
+name: .NET Core
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+## trusted-publishing: https://learn.microsoft.com/zh-cn/nuget/nuget-org/trusted-publishing
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    
+    permissions:
+      id-token: write
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup .NET 10
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 10.0.302
+    - name: Install dependencies
+      run: dotnet restore
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+    - name: Test
+      run: dotnet test --no-restore --verbosity normal
+    - name: Generated Package
+      run: dotnet pack --include-symbols -p:SymbolPackageFormat=snupkg --no-build -c Release
+    - name: NuGet login
+      uses: NuGet/login@v1
+      id: login
+      with:
+        user: ${{ secrets.NUGET_USER }}
+    - name: NuGet push
+      run:
+        dotnet nuget push ./src/DotNetCore.CAP.Sqlite/bin/Release/*.nupkg --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
